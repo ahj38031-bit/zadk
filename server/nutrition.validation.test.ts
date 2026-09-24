@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { appRouter } from "./routers";
 import type { TrpcContext } from "./_core/context";
+import { calculateNutritionGoals } from "./nutrition";
 
 type AuthenticatedUser = NonNullable<TrpcContext["user"]>;
 
@@ -25,6 +26,22 @@ function createContext(): TrpcContext {
 }
 
 describe("nutrition input validation", () => {
+  it("calculates maintenance calories and balanced macros from body data", () => {
+    const result = calculateNutritionGoals({ age: 30, heightCm: 170, weightKg: 70, activityLevel: "moderate" });
+    expect(result.bmr).toBe(1535);
+    expect(result.calorieGoal).toBe(2380);
+    expect(result.proteinGoal).toBe(149);
+    expect(result.carbsGoal).toBe(268);
+    expect(result.fatGoal).toBe(79);
+  });
+
+  it("uses a higher calorie target for higher activity", () => {
+    const sedentary = calculateNutritionGoals({ age: 30, heightCm: 170, weightKg: 70, activityLevel: "sedentary" });
+    const active = calculateNutritionGoals({ age: 30, heightCm: 170, weightKg: 70, activityLevel: "high" });
+    expect(active.calorieGoal).toBeGreaterThan(sedentary.calorieGoal);
+    expect(active.activityMultiplier).toBe(1.725);
+  });
+
   it("requires a meal description or image", async () => {
     const caller = appRouter.createCaller(createContext());
     await expect(caller.nutrition.analyzeMeal({})).rejects.toMatchObject({ code: "BAD_REQUEST" });

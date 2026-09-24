@@ -7,6 +7,7 @@ import { protectedProcedure, publicProcedure, router } from "./_core/trpc";
 import { clearTodayMeals, createMeal, deleteMeal, getDashboard, updateProfile } from "./db";
 import { storagePut } from "./storage";
 import { TRPCError } from "@trpc/server";
+import { calculateNutritionGoals } from "./nutrition";
 
 const imageMime = z.enum(["image/jpeg", "image/png", "image/webp"]);
 
@@ -51,6 +52,12 @@ export const appRouter = router({
   }),
   nutrition: router({
     dashboard: protectedProcedure.query(({ ctx }) => getDashboard(ctx.user.id)),
+    calculateGoals: protectedProcedure.input(z.object({
+      age: z.number().int().min(10).max(110),
+      heightCm: z.number().int().min(80).max(250),
+      weightKg: z.number().int().min(20).max(400),
+      activityLevel: z.enum(["sedentary", "light", "moderate", "high"]),
+    })).query(({ input }) => calculateNutritionGoals(input)),
     saveProfile: protectedProcedure.input(z.object({
       calorieGoal: z.number().int().min(800).max(10000),
       proteinGoal: z.number().int().min(10).max(500),
@@ -60,7 +67,13 @@ export const appRouter = router({
       heightCm: z.number().int().min(80).max(250).nullable().optional(),
       weightKg: z.number().int().min(20).max(400).nullable().optional(),
       activityLevel: z.enum(["sedentary", "light", "moderate", "high"]),
-    })).mutation(({ ctx, input }) => updateProfile(ctx.user.id, input)),
+    })).mutation(({ ctx, input }) => {
+      const goals = input.age && input.heightCm && input.weightKg
+        ? calculateNutritionGoals({ age: input.age, heightCm: input.heightCm, weightKg: input.weightKg, activityLevel: input.activityLevel })
+        : null;
+      const { bmr: _bmr, activityMultiplier: _activityMultiplier, ...calculatedGoals } = goals ?? {};
+      return updateProfile(ctx.user.id, { ...input, ...(goals ? calculatedGoals : {}) });
+    }),
     deleteMeal: protectedProcedure.input(z.object({ id: z.number().int().positive() })).mutation(({ ctx, input }) => deleteMeal(ctx.user.id, input.id)),
     clearToday: protectedProcedure.mutation(({ ctx }) => clearTodayMeals(ctx.user.id)),
     analyzeMeal: protectedProcedure.input(z.object({
