@@ -97,7 +97,7 @@ export const appRouter = router({
     deleteMeal: protectedProcedure.input(z.object({ id: z.number().int().positive() })).mutation(({ ctx, input }) => deleteMeal(ctx.user.id, input.id)),
     clearToday: protectedProcedure.mutation(({ ctx }) => clearTodayMeals(ctx.user.id)),
     analyzeMeal: protectedProcedure.input(z.object({
-      description: z.string().trim().max(2000).optional(),
+      description: z.string().trim().max(500).optional(),
       imageData: z.string().max(8_000_000).optional(),
       imageMimeType: imageMime.optional(),
     }).refine((value) => Boolean(value.description || value.imageData), { message: "أضف وصفاً أو صورة للوجبة" })).mutation(async ({ ctx, input }) => {
@@ -127,7 +127,7 @@ export const appRouter = router({
         "إذا كانت كمية الزيت أو الصلصة غير ظاهرة، قدّرها بحذر وأذكرها في assumptions. لا تفترض أن الطبق منزوع الزيت.",
         "استخدم نطاقاً محافظاً للحصة الظاهرة، وعبّر عن عدم اليقين في confidence وassumptions. لا تقدم نصائح طبية أو تشخيصاً.",
         "اللغة العربية في mealName وsummary وitems وingredients.name وingredients.portion وassumptions.",
-        input.description ? `وصف المستخدم (استخدمه لتصحيح الصورة): ${input.description}` : "حلّل الصورة المرفقة فقط.",
+        input.description ? `ملاحظة المستخدم هي مصدر مهم للمعلومات غير المرئية: استخدمها لتصحيح أو استكمال الصورة، خصوصاً نوع الزيت والصلصات وطريقة الطهي وحجم الحصة، ولا تتجاهلها. ملاحظة المستخدم: ${input.description}` : "لا توجد ملاحظة نصية؛ اعتمد على الصورة واذكر الافتراضات.",
       ].join("\n");
       const content = imagePart ? [{ type: "text" as const, text: prompt }, imagePart] : prompt;
       let response;

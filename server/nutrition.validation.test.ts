@@ -47,6 +47,15 @@ describe("nutrition input validation", () => {
     await expect(caller.nutrition.analyzeMeal({})).rejects.toMatchObject({ code: "BAD_REQUEST" });
   });
 
+  it("keeps the photo note short and rejects oversized notes", async () => {
+    const caller = appRouter.createCaller(createContext());
+    await expect(caller.nutrition.analyzeMeal({
+      description: "x".repeat(501),
+      imageData: "data:image/png;base64,a",
+      imageMimeType: "image/png",
+    })).rejects.toMatchObject({ code: "BAD_REQUEST" });
+  });
+
   it("rejects unrealistic calorie goals before touching the database", async () => {
     const caller = appRouter.createCaller(createContext());
     await expect(caller.nutrition.saveProfile({
