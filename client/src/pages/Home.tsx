@@ -291,7 +291,7 @@ export default function Home() {
         </section>
 
         <div className="mt-6 grid gap-5 lg:grid-cols-[1.12fr_.88fr]">
-          <section className={`order-2 rounded-[24px] p-5 shadow-[0_8px_25px_rgba(35,67,51,.05)] lg:order-1 sm:p-6 ${dark ? "bg-[#20312b]" : "bg-white"}`}>
+          <section className={`zadak-meal-card order-2 rounded-[24px] p-5 shadow-[0_8px_25px_rgba(35,67,51,.05)] lg:order-1 sm:p-6 ${dark ? "bg-[#20312b]" : "bg-white"}`}>
             <div className="mb-5 flex items-start justify-between gap-3">
               <div>
                 <div className={`mb-1 text-[10px] font-semibold ${dark ? "text-[#8ca69b]" : "text-[#9ba69d]"}`}>{t.lastMeals}</div>
@@ -299,8 +299,8 @@ export default function Home() {
               </div>
               <button onClick={() => toast.info(t.soon)} className="flex items-center gap-1 rounded-full px-2 py-1 text-[11px] font-bold text-[#138872] transition-colors hover:bg-[#eff7ef]">{t.viewHistory} {isArabic ? <ArrowLeft size={13} /> : <ArrowRight size={13} />}</button>
             </div>
-            <div className={`flex min-h-[120px] flex-col items-center justify-center rounded-[17px] border border-dashed text-center ${dark ? "border-white/10 bg-[#1b2a25]" : "border-[#e4e9e1] bg-[#fdfdfa]"}`}>
-              <div className={`mb-2 grid h-9 w-9 place-items-center rounded-full ${dark ? "bg-[#28483c] text-[#92d6b5]" : "bg-[#eef8ef] text-[#55a784]"}`}><Camera size={17} /></div>
+            <div className={`zadak-meal-empty flex min-h-[120px] flex-col items-center justify-center rounded-[17px] border border-dashed text-center ${dark ? "border-white/10 bg-[#1b2a25]" : "border-[#e4e9e1] bg-[#fdfdfa]"}`}>
+              <div className={`zadak-meal-icon mb-2 grid h-9 w-9 place-items-center rounded-full ${dark ? "bg-[#28483c] text-[#92d6b5]" : "bg-[#eef8ef] text-[#55a784]"}`}><Camera size={17} /></div>
               <p className={`text-[11px] ${dark ? "text-[#b0c1b8]" : "text-[#7a847d]"}`}>{t.emptyHint}</p>
               <button onClick={handleAnalyze} className="mt-2 text-[13px] font-extrabold text-[#11866f] underline decoration-[#bce0c2] decoration-2 underline-offset-4">{t.startAnalysis}</button>
             </div>
@@ -335,8 +335,8 @@ export default function Home() {
 
       <footer className="mx-auto flex max-w-[1180px] justify-end px-5 pb-5 lg:px-8"><span className={`rounded-full px-3 py-1.5 text-[9px] font-semibold shadow-sm ${dark ? "bg-[#20312b] text-[#9db5a8]" : "bg-white text-[#9da59d]"}`}>Made with Manus ◈</span></footer>
 
-      {privacyOpen && <div className="fixed inset-0 z-50 grid place-items-center bg-[#10271f]/35 p-5 backdrop-blur-sm" onClick={() => setPrivacyOpen(false)}>
-        <div className={`relative w-full max-w-md rounded-[25px] p-6 shadow-2xl ${dark ? "bg-[#20312b] text-[#e8f5ec]" : "bg-white text-[#23342b]"}`} onClick={(e) => e.stopPropagation()}>
+      {privacyOpen && <div className="zadak-modal-backdrop fixed inset-0 z-50 grid place-items-center bg-[#10271f]/35 p-5 backdrop-blur-sm" onClick={() => setPrivacyOpen(false)}>
+        <div className={`zadak-modal-panel relative w-full max-w-md rounded-[25px] p-6 shadow-2xl ${dark ? "bg-[#20312b] text-[#e8f5ec]" : "bg-white text-[#23342b]"}`} onClick={(e) => e.stopPropagation()}>
           <button onClick={() => setPrivacyOpen(false)} className="absolute left-4 top-4 grid h-8 w-8 place-items-center rounded-full bg-black/5"><X size={15} /></button>
           <div className="mb-5 grid h-12 w-12 place-items-center rounded-full bg-[#eaf6eb] text-[#16866f]"><ShieldCheck size={22} /></div>
           <h3 className="text-xl font-black">{t.privacyTitle}</h3>
@@ -350,8 +350,8 @@ export default function Home() {
         </div>
       </div>}
 
-      {mealModal && <div className="fixed inset-0 z-50 grid place-items-center bg-[#10271f]/35 p-5 backdrop-blur-sm" onClick={() => setMealModal(false)}>
-        <div className={`relative w-full max-w-lg rounded-[25px] p-6 shadow-2xl ${dark ? "bg-[#20312b] text-[#e8f5ec]" : "bg-white text-[#23342b]"}`} onClick={(e) => e.stopPropagation()}>
+      {mealModal && <div className="zadak-modal-backdrop fixed inset-0 z-50 grid place-items-center bg-[#10271f]/35 p-5 backdrop-blur-sm" onClick={() => setMealModal(false)}>
+        <div className={`zadak-modal-panel relative w-full max-w-lg rounded-[25px] p-6 shadow-2xl ${dark ? "bg-[#20312b] text-[#e8f5ec]" : "bg-white text-[#23342b]"}`} onClick={(e) => e.stopPropagation()}>
           <button onClick={() => setMealModal(false)} className="absolute left-4 top-4 grid h-8 w-8 place-items-center rounded-full bg-black/5"><X size={15} /></button>
           <div className="flex items-center gap-3"><div className="grid h-11 w-11 place-items-center rounded-full bg-[#eaf6eb] text-[#16866f]"><Camera size={19} /></div><div><h3 className="text-xl font-black">{t.analyze}</h3><p className={`mt-1 text-xs ${dark ? "text-[#adc4b6]" : "text-[#7b897e]"}`}>{t.emptyHint}</p></div></div>
           <div className="mt-6 grid grid-cols-2 gap-3"><button onClick={submitMeal} className={`flex h-28 flex-col items-center justify-center gap-2 rounded-2xl border border-dashed ${dark ? "border-white/15 bg-[#182a23]" : "border-[#dbe8dc] bg-[#f8fcf7]"}`}><Camera size={21} className="text-[#16866f]" /><span className="text-xs font-bold">{language === "ar" ? "التقاط صورة" : language === "en" ? "Take a photo" : "Fotoğraf çek"}</span></button><button onClick={submitMeal} className={`flex h-28 flex-col items-center justify-center gap-2 rounded-2xl border border-dashed ${dark ? "border-white/15 bg-[#182a23]" : "border-[#dbe8dc] bg-[#f8fcf7]"}`}><Plus size={21} className="text-[#16866f]" /><span className="text-xs font-bold">{t.addMeal}</span></button></div>

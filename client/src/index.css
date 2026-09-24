@@ -51,4 +51,60 @@
   .hero-gradient {
     background: linear-gradient(135deg, oklch(0.45 0.12 160) 0%, oklch(0.35 0.1 170) 100%);
   }
+
+  @keyframes zadak-fade-in {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+
+  @keyframes zadak-modal-in {
+    from { opacity: 0; transform: translateY(14px) scale(.97); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
+  }
+
+  @keyframes zadak-card-in {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .zadak-modal-backdrop {
+    animation: zadak-fade-in 180ms cubic-bezier(.23, 1, .32, 1) both;
+  }
+
+  .zadak-modal-panel {
+    animation: zadak-modal-in 260ms cubic-bezier(.23, 1, .32, 1) both;
+  }
+
+  .zadak-meal-card {
+    animation: zadak-card-in 420ms cubic-bezier(.23, 1, .32, 1) 80ms both;
+    transition: transform 220ms cubic-bezier(.23, 1, .32, 1), box-shadow 220ms cubic-bezier(.23, 1, .32, 1), background-color 220ms ease;
+  }
+
+  .zadak-meal-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 16px 34px rgba(35, 67, 51, .11);
+  }
+
+  .zadak-meal-empty {
+    transition: border-color 220ms ease, background-color 220ms ease, transform 220ms cubic-bezier(.23, 1, .32, 1);
+  }
+
+  .zadak-meal-card:hover .zadak-meal-empty {
+    transform: translateY(-1px);
+    border-color: rgba(22, 134, 111, .38);
+    background-color: rgba(239, 249, 240, .72);
+  }
+
+  .zadak-meal-card:hover .zadak-meal-icon {
+    transform: scale(1.08) rotate(-4deg);
+  }
+
+  .zadak-meal-icon {
+    transition: transform 220ms cubic-bezier(.23, 1, .32, 1), background-color 220ms ease;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .zadak-modal-backdrop, .zadak-modal-panel, .zadak-meal-card { animation: none; }
+    .zadak-meal-card, .zadak-meal-empty, .zadak-meal-icon { transition: none; }
+  }
 }
