@@ -1,4 +1,9 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useAuth } from "@/_core/hooks/useAuth";
+import { startLogin } from "@/const";
+import { trpc } from "@/lib/trpc";
+import { toast } from "sonner";
+import { useTheme } from "@/contexts/ThemeContext";
 import {
   Activity,
   ArrowLeft,
@@ -7,17 +12,15 @@ import {
   Camera,
   Check,
   ChevronDown,
-  CircleHelp,
   Clock3,
-  Droplets,
   Globe2,
   History,
-  Languages,
+  ImagePlus,
   LockKeyhole,
   LogIn,
   Moon,
   Plus,
-  Settings2,
+  Save,
   ShieldCheck,
   Sparkles,
   Sun,
@@ -27,338 +30,174 @@ import {
   X,
   Zap,
 } from "lucide-react";
-import { toast } from "sonner";
 
 type Language = "ar" | "en" | "tr";
+type View = "home" | "history" | "stats" | "profile";
+type MealType = "breakfast" | "lunch" | "dinner" | "snack";
 
-const labels = {
+type Labels = {
+  home: string; analyze: string; history: string; stats: string; profile: string; login: string; logout: string;
+  greeting: string; headline: string; subheadline: string; analyzeNow: string; smart: string; today: string;
+  calories: string; newDay: string; remaining: string; protein: string; carbs: string; fats: string; lastMeals: string;
+  noMeals: string; emptyHint: string; viewHistory: string; startAnalysis: string; privacy: string; privacyTitle: string;
+  privacyText: string; close: string; reset: string; soon: string; language: string; dark: string; light: string;
+  sync: string; addMeal: string; descriptionPlaceholder: string; takePhoto: string; uploadPhoto: string;
+  analyzing: string; analysisDone: string; mealSaved: string; delete: string; allMeals: string; noHistory: string;
+  statsTitle: string; weekly: string; totalMeals: string; avgCalories: string; avgProtein: string; targetSettings: string;
+  calorieGoal: string; proteinGoal: string; carbsGoal: string; fatGoal: string; age: string; height: string; weight: string;
+  activity: string; save: string; saved: string; breakfast: string; lunch: string; dinner: string; snack: string;
+  guestHint: string; signInToSync: string; confidence: string; estimated: string; items: string; removeImage: string;
+};
+
+const labels: Record<Language, Labels> = {
   ar: {
-    home: "الرئيسية",
-    analyze: "حلّل وجبة",
-    history: "السجل",
-    stats: "الإحصائيات",
-    profile: "ملفي",
-    login: "تسجيل الدخول للمزامنة",
-    greeting: "أهلاً، يا صديق الصحة",
-    headline: "اعرف ما في طبقك، وخُذ قرارك بثقة.",
-    subheadline: "صوّر وجبتك أو صفها بكلماتك — وسنحوّلها إلى تقدير غذائي واضح خلال لحظات.",
-    analyzeNow: "حلّل وجبتك الآن",
-    smart: "ذكي وبسيط",
-    today: "ملخص اليوم",
-    calories: "سعرة",
-    newDay: "يوم جديد",
-    remaining: "متبقٍ",
-    protein: "بروتين",
-    carbs: "كربوهيدرات",
-    fats: "دهون",
-    lastMeals: "آخر الوجبات",
-    noMeals: "لم تُسجّل أي وجبة بعد",
-    emptyHint: "ابدأ بصورة أو وصف بسيط، وسنرتب النتيجة لك.",
-    viewHistory: "عرض السجل",
-    startAnalysis: "ابدأ التحليل",
-    privacy: "الخصوصية والمعالجة",
-    privacyTitle: "بياناتك على جهازك",
-    privacyText: "افهم بوضوح أين تبقى بياناتك ومتى تُرسل صورة للتحليل.",
-    close: "إغلاق",
-    reset: "تم تصفير ملخص اليوم",
-    soon: "هذه الشاشة جاهزة للربط قريباً",
-    language: "اللغة",
-    dark: "الوضع الداكن",
-    light: "الوضع الفاتح",
-    sync: "المزامنة",
-    feature: "الميزة قادمة قريباً",
-    addMeal: "إضافة وجبة",
+    home: "الرئيسية", analyze: "حلّل وجبة", history: "السجل", stats: "الإحصائيات", profile: "ملفي", login: "تسجيل الدخول للمزامنة", logout: "تسجيل الخروج",
+    greeting: "أهلاً، يا صديق الصحة", headline: "اعرف ما في طبقك، وخُذ قرارك بثقة.", subheadline: "صوّر وجبتك أو صفها بكلماتك — وسنحوّلها إلى تقدير غذائي واضح خلال لحظات.", analyzeNow: "حلّل وجبتك الآن", smart: "ذكي وبسيط", today: "ملخص اليوم", calories: "سعرة", newDay: "يوم جديد", remaining: "متبقٍ", protein: "بروتين", carbs: "كربوهيدرات", fats: "دهون", lastMeals: "آخر الوجبات", noMeals: "لم تُسجّل أي وجبة بعد", emptyHint: "ابدأ بصورة أو وصف بسيط، وسنرتب النتيجة لك.", viewHistory: "عرض السجل", startAnalysis: "ابدأ التحليل", privacy: "الخصوصية والمعالجة", privacyTitle: "بياناتك على جهازك", privacyText: "افهم بوضوح أين تبقى بياناتك ومتى تُرسل صورة للتحليل.", close: "إغلاق", reset: "تم تصفير وجبات اليوم", soon: "الميزة جاهزة للحسابات المسجلة", language: "اللغة", dark: "الوضع الداكن", light: "الوضع الفاتح", sync: "تم تسجيل الدخول للمزامنة", addMeal: "إضافة وجبة", descriptionPlaceholder: "أو اكتب وصفاً لوجبتك هنا...", takePhoto: "التقاط صورة", uploadPhoto: "اختيار صورة", analyzing: "جارٍ تحليل وجبتك...", analysisDone: "نتيجة التحليل", mealSaved: "تم حفظ الوجبة في سجلك", delete: "حذف", allMeals: "كل الوجبات", noHistory: "لا توجد وجبات في سجلك بعد", statsTitle: "إحصائياتك الغذائية", weekly: "آخر 7 أيام", totalMeals: "عدد الوجبات", avgCalories: "متوسط السعرات", avgProtein: "متوسط البروتين", targetSettings: "أهدافك اليومية", calorieGoal: "هدف السعرات", proteinGoal: "هدف البروتين (غ)", carbsGoal: "هدف الكربوهيدرات (غ)", fatGoal: "هدف الدهون (غ)", age: "العمر", height: "الطول (سم)", weight: "الوزن (كغ)", activity: "مستوى النشاط", save: "حفظ الأهداف", saved: "تم حفظ أهدافك", breakfast: "الفطور", lunch: "الغداء", dinner: "العشاء", snack: "وجبة خفيفة", guestHint: "سجّل الدخول لحفظ وجباتك ومزامنتها بين أجهزتك.", signInToSync: "سجّل الدخول للمزامنة", confidence: "الثقة", estimated: "تقديري", items: "المكونات الظاهرة", removeImage: "إزالة الصورة",
   },
   en: {
-    home: "Home",
-    analyze: "Analyze meal",
-    history: "History",
-    stats: "Statistics",
-    profile: "My profile",
-    login: "Log in to sync",
-    greeting: "Hello, health friend",
-    headline: "Know what's on your plate, and decide with confidence.",
-    subheadline: "Snap your meal or describe it in words — we'll turn it into a clear nutrition estimate in moments.",
-    analyzeNow: "Analyze your meal",
-    smart: "Smart & simple",
-    today: "Today's summary",
-    calories: "calories",
-    newDay: "New day",
-    remaining: "remaining",
-    protein: "Protein",
-    carbs: "Carbs",
-    fats: "Fats",
-    lastMeals: "Recent meals",
-    noMeals: "No meal logged yet",
-    emptyHint: "Start with a photo or a simple description, and we'll organize the result for you.",
-    viewHistory: "View history",
-    startAnalysis: "Start analysis",
-    privacy: "Privacy & processing",
-    privacyTitle: "Your data on your device",
-    privacyText: "Understand clearly where your data stays and when an image is sent for analysis.",
-    close: "Close",
-    reset: "Today's summary was reset",
-    soon: "This screen is ready to connect soon",
-    language: "Language",
-    dark: "Dark mode",
-    light: "Light mode",
-    sync: "Sync",
-    feature: "Feature coming soon",
-    addMeal: "Add meal",
+    home: "Home", analyze: "Analyze meal", history: "History", stats: "Statistics", profile: "My profile", login: "Log in to sync", logout: "Log out", greeting: "Hello, health friend", headline: "Know what's on your plate, and decide with confidence.", subheadline: "Snap your meal or describe it in words — we'll turn it into a clear nutrition estimate in moments.", analyzeNow: "Analyze your meal", smart: "Smart & simple", today: "Today's summary", calories: "calories", newDay: "New day", remaining: "remaining", protein: "Protein", carbs: "Carbs", fats: "Fat", lastMeals: "Recent meals", noMeals: "No meal logged yet", emptyHint: "Start with a photo or a simple description, and we'll organize the result for you.", viewHistory: "View history", startAnalysis: "Start analysis", privacy: "Privacy & processing", privacyTitle: "Your data on your device", privacyText: "Understand clearly where your data stays and when an image is sent for analysis.", close: "Close", reset: "Today's meals were cleared", soon: "This feature is ready for signed-in accounts", language: "Language", dark: "Dark mode", light: "Light mode", sync: "Signed in and ready to sync", addMeal: "Add meal", descriptionPlaceholder: "Or describe your meal here...", takePhoto: "Take a photo", uploadPhoto: "Choose an image", analyzing: "Analyzing your meal...", analysisDone: "Analysis result", mealSaved: "Meal saved to your history", delete: "Delete", allMeals: "All meals", noHistory: "No meals in your history yet", statsTitle: "Your nutrition stats", weekly: "Last 7 days", totalMeals: "Meals logged", avgCalories: "Average calories", avgProtein: "Average protein", targetSettings: "Your daily targets", calorieGoal: "Calorie goal", proteinGoal: "Protein goal (g)", carbsGoal: "Carb goal (g)", fatGoal: "Fat goal (g)", age: "Age", height: "Height (cm)", weight: "Weight (kg)", activity: "Activity level", save: "Save targets", saved: "Your targets were saved", breakfast: "Breakfast", lunch: "Lunch", dinner: "Dinner", snack: "Snack", guestHint: "Log in to save meals and sync them across devices.", signInToSync: "Log in to sync", confidence: "Confidence", estimated: "Estimated", items: "Detected items", removeImage: "Remove image",
   },
   tr: {
-    home: "Ana sayfa",
-    analyze: "Öğün analiz et",
-    history: "Geçmiş",
-    stats: "İstatistikler",
-    profile: "Profilim",
-    login: "Senkronize olmak için giriş",
-    greeting: "Merhaba, sağlık dostu",
-    headline: "Tabağında ne olduğunu bil, güvenle karar ver.",
-    subheadline: "Öğünün fotoğrafını çek veya kelimelerle anlat — saniyeler içinde anlaşılır bir beslenme tahmini sunalım.",
-    analyzeNow: "Öğününü analiz et",
-    smart: "Akıllı ve basit",
-    today: "Bugünün özeti",
-    calories: "kalori",
-    newDay: "Yeni gün",
-    remaining: "kalan",
-    protein: "Protein",
-    carbs: "Karbonhidrat",
-    fats: "Yağ",
-    lastMeals: "Son öğünler",
-    noMeals: "Henüz öğün kaydedilmedi",
-    emptyHint: "Bir fotoğraf veya kısa açıklamayla başlayın, sonucu sizin için düzenleyelim.",
-    viewHistory: "Geçmişi gör",
-    startAnalysis: "Analizi başlat",
-    privacy: "Gizlilik ve işleme",
-    privacyTitle: "Verileriniz cihazınızda",
-    privacyText: "Verilerinizin nerede kaldığını ve bir görüntünün ne zaman analiz için gönderildiğini açıkça görün.",
-    close: "Kapat",
-    reset: "Bugünün özeti sıfırlandı",
-    soon: "Bu ekran yakında bağlantıya hazır",
-    language: "Dil",
-    dark: "Karanlık mod",
-    light: "Aydınlık mod",
-    sync: "Senkronizasyon",
-    feature: "Özellik yakında",
-    addMeal: "Öğün ekle",
+    home: "Ana sayfa", analyze: "Öğün analiz et", history: "Geçmiş", stats: "İstatistikler", profile: "Profilim", login: "Senkronize olmak için giriş", logout: "Çıkış", greeting: "Merhaba, sağlık dostu", headline: "Tabağında ne olduğunu bil, güvenle karar ver.", subheadline: "Öğünün fotoğrafını çek veya kelimelerle anlat — saniyeler içinde anlaşılır bir beslenme tahmini sunalım.", analyzeNow: "Öğününü analiz et", smart: "Akıllı ve basit", today: "Bugünün özeti", calories: "kalori", newDay: "Yeni gün", remaining: "kalan", protein: "Protein", carbs: "Karbonhidrat", fats: "Yağ", lastMeals: "Son öğünler", noMeals: "Henüz öğün kaydedilmedi", emptyHint: "Bir fotoğraf veya kısa açıklamayla başlayın, sonucu sizin için düzenleyelim.", viewHistory: "Geçmişi gör", startAnalysis: "Analizi başlat", privacy: "Gizlilik ve işleme", privacyTitle: "Verileriniz cihazınızda", privacyText: "Verilerinizin nerede kaldığını ve bir görüntünün ne zaman analiz için gönderildiğini açıkça görün.", close: "Kapat", reset: "Bugünün öğünleri temizlendi", soon: "Bu özellik giriş yapan hesaplar için hazır", language: "Dil", dark: "Karanlık mod", light: "Aydınlık mod", sync: "Giriş yapıldı ve senkronizasyona hazır", addMeal: "Öğün ekle", descriptionPlaceholder: "Veya öğününüzü açıklayın...", takePhoto: "Fotoğraf çek", uploadPhoto: "Görsel seç", analyzing: "Öğününüz analiz ediliyor...", analysisDone: "Analiz sonucu", mealSaved: "Öğün geçmişinize kaydedildi", delete: "Sil", allMeals: "Tüm öğünler", noHistory: "Geçmişinizde henüz öğün yok", statsTitle: "Beslenme istatistikleriniz", weekly: "Son 7 gün", totalMeals: "Kaydedilen öğün", avgCalories: "Ortalama kalori", avgProtein: "Ortalama protein", targetSettings: "Günlük hedefleriniz", calorieGoal: "Kalori hedefi", proteinGoal: "Protein hedefi (g)", carbsGoal: "Karbonhidrat hedefi (g)", fatGoal: "Yağ hedefi (g)", age: "Yaş", height: "Boy (cm)", weight: "Kilo (kg)", activity: "Aktivite seviyesi", save: "Hedefleri kaydet", saved: "Hedefleriniz kaydedildi", breakfast: "Kahvaltı", lunch: "Öğle", dinner: "Akşam", snack: "Atıştırmalık", guestHint: "Öğünlerinizi kaydetmek ve cihazlar arasında senkronize etmek için giriş yapın.", signInToSync: "Senkronize olmak için giriş", confidence: "Güven", estimated: "Tahmini", items: "Algılanan öğeler", removeImage: "Görseli kaldır",
   },
-} as const;
+};
 
 const navItems = [
-  { key: "home", icon: Utensils },
-  { key: "analyze", icon: Sparkles },
-  { key: "history", icon: History },
-  { key: "stats", icon: BarChart3 },
-  { key: "profile", icon: UserRound },
-] as const;
+  { key: "home" as const, icon: Utensils },
+  { key: "analyze" as const, icon: Sparkles },
+  { key: "history" as const, icon: History },
+  { key: "stats" as const, icon: BarChart3 },
+  { key: "profile" as const, icon: UserRound },
+];
 
-const nutrition = [
-  { key: "protein", value: "0 / 98غ", color: "#299c78" },
-  { key: "carbs", value: "0 / 293غ", color: "#f0b45a" },
-  { key: "fats", value: "0 / 64غ", color: "#8c7ed1" },
-] as const;
+type ProfileForm = { calorieGoal: number; proteinGoal: number; carbsGoal: number; fatGoal: number; age: number | null; heightCm: number | null; weightKg: number | null; activityLevel: "sedentary" | "light" | "moderate" | "high" };
+const defaultProfile: ProfileForm = { calorieGoal: 2139, proteinGoal: 98, carbsGoal: 293, fatGoal: 64, age: null, heightCm: null, weightKg: null, activityLevel: "moderate" };
 
-function Logo() {
-  return (
-    <div className="flex items-center gap-3" dir="rtl">
-      <div className="relative grid h-11 w-11 place-items-center rounded-full bg-[#087b69] text-white shadow-[0_8px_18px_rgba(6,101,84,.2)]">
-        <Utensils size={20} strokeWidth={2.2} />
-        <span className="absolute -bottom-0.5 -left-0.5 h-2.5 w-2.5 rounded-full bg-[#f0ad4e] ring-2 ring-white" />
-      </div>
-      <div className="leading-none">
-        <div className="text-[17px] font-black tracking-[-0.04em] text-[#087b69]">زادك AI</div>
-        <div className="mt-1 text-[7px] font-bold tracking-[.2em] text-[#9b9b93]">YOUR FOOD COMPANION</div>
-      </div>
-    </div>
-  );
+function formatNumber(value: number, language: Language) {
+  return value.toLocaleString(language === "ar" ? "ar-EG" : language === "tr" ? "tr-TR" : "en-US");
 }
 
-function MacroRow({ label, value, color }: { label: string; value: string; color: string }) {
-  return (
-    <div className="mb-4 last:mb-0">
-      <div className="mb-2 flex items-center justify-between text-[11px] font-medium text-[#6f756f]">
-        <span>{label}</span>
-        <span dir="ltr" className="text-[10px] text-[#48514c]">{value}</span>
-      </div>
-      <div className="h-[7px] overflow-hidden rounded-full bg-[#e9eeea]">
-        <div className="h-full w-0 rounded-full transition-all duration-500" style={{ backgroundColor: color }} />
-      </div>
-    </div>
-  );
+function isToday(date: Date | string) {
+  const a = new Date(date); const b = new Date();
+  return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
+}
+
+function parseSummary(value: string | null) {
+  try { return value ? JSON.parse(value) as { summary?: string; items?: string[] } : {}; } catch { return {}; }
+}
+
+function Logo() {
+  return <div className="flex items-center gap-3" dir="rtl"><div className="relative grid h-11 w-11 place-items-center rounded-full bg-[#087b69] text-white shadow-[0_8px_18px_rgba(6,101,84,.2)]"><Utensils size={20} strokeWidth={2.2} /><span className="absolute -bottom-0.5 -left-0.5 h-2.5 w-2.5 rounded-full bg-[#f0ad4e] ring-2 ring-white" /></div><div className="leading-none"><div className="text-[17px] font-black tracking-[-0.04em] text-[#087b69]">زادك AI</div><div className="mt-1 text-[7px] font-bold tracking-[.2em] text-[#9b9b93]">YOUR FOOD COMPANION</div></div></div>;
+}
+
+function MacroRow({ label, current, goal, color, unit }: { label: string; current: number; goal: number; color: string; unit: string }) {
+  const percent = Math.min(100, goal ? (current / goal) * 100 : 0);
+  return <div className="mb-4 last:mb-0"><div className="mb-2 flex items-center justify-between text-[11px] font-medium text-[#6f756f]"><span>{label}</span><span dir="ltr" className="text-[10px] text-[#48514c]">{current} / {goal}{unit}</span></div><div className="h-[7px] overflow-hidden rounded-full bg-[#e9eeea]"><div className="h-full rounded-full transition-all duration-700" style={{ width: `${percent}%`, backgroundColor: color }} /></div></div>;
 }
 
 export default function Home() {
+  const { user, loading: authLoading, isAuthenticated, logout } = useAuth();
+  const { theme, toggleTheme } = useTheme();
+  const dark = theme === "dark";
   const [language, setLanguage] = useState<Language>("ar");
-  const [dark, setDark] = useState(false);
-  const [privacyOpen, setPrivacyOpen] = useState(false);
+  const [view, setView] = useState<View>("home");
   const [mobileMenu, setMobileMenu] = useState(false);
-  const [active, setActive] = useState("home");
-  const [dayReset, setDayReset] = useState(false);
+  const [privacyOpen, setPrivacyOpen] = useState(false);
   const [mealModal, setMealModal] = useState(false);
-  const [mealText, setMealText] = useState("");
+  const [description, setDescription] = useState("");
+  const [imageData, setImageData] = useState<string | undefined>();
+  const [imageMimeType, setImageMimeType] = useState<"image/jpeg" | "image/png" | "image/webp" | undefined>();
+  const [analysisResult, setAnalysisResult] = useState<ReturnType<typeof parseSummary> & { mealName?: string; calories?: number; protein?: number; carbs?: number; fat?: number; confidence?: number; items?: string[] }>();
+  const [profileForm, setProfileForm] = useState(defaultProfile);
+  const fileRef = useRef<HTMLInputElement>(null);
   const t = labels[language];
   const isArabic = language === "ar";
+  const utils = trpc.useUtils();
+  const dashboardQuery = trpc.nutrition.dashboard.useQuery(undefined, { enabled: isAuthenticated, retry: false, refetchOnWindowFocus: false });
+  const analyzeMutation = trpc.nutrition.analyzeMeal.useMutation({ onSuccess: (result) => { setAnalysisResult({ ...result.analysis, items: result.analysis.items }); void utils.nutrition.dashboard.invalidate(); toast.success(t.mealSaved); } });
+  const deleteMutation = trpc.nutrition.deleteMeal.useMutation({ onSuccess: () => { void utils.nutrition.dashboard.invalidate(); toast.success(t.delete); } });
+  const clearMutation = trpc.nutrition.clearToday.useMutation({ onSuccess: () => { void utils.nutrition.dashboard.invalidate(); toast.success(t.reset); } });
+  const saveProfileMutation = trpc.nutrition.saveProfile.useMutation({ onSuccess: () => { void utils.nutrition.dashboard.invalidate(); toast.success(t.saved); } });
 
-  const direction = useMemo(() => (language === "ar" ? "rtl" : "ltr"), [language]);
+  const profile = dashboardQuery.data?.profile ?? defaultProfile;
+  const meals = dashboardQuery.data?.meals ?? [];
+  const todayMeals = meals.filter((meal) => isToday(meal.createdAt));
+  const totals = useMemo(() => todayMeals.reduce((sum, meal) => ({ calories: sum.calories + meal.calories, protein: sum.protein + meal.protein, carbs: sum.carbs + meal.carbs, fat: sum.fat + meal.fat }), { calories: 0, protein: 0, carbs: 0, fat: 0 }), [todayMeals]);
+  const weeklyMeals = meals.filter((meal) => new Date(meal.createdAt).getTime() >= Date.now() - 7 * 86_400_000);
+  const weeklyAverage = weeklyMeals.length ? Math.round(weeklyMeals.reduce((sum, meal) => sum + meal.calories, 0) / 7) : 0;
+
+  useEffect(() => { setProfileForm({ calorieGoal: profile.calorieGoal, proteinGoal: profile.proteinGoal, carbsGoal: profile.carbsGoal, fatGoal: profile.fatGoal, age: profile.age, heightCm: profile.heightCm, weightKg: profile.weightKg, activityLevel: profile.activityLevel }); }, [profile.calorieGoal, profile.proteinGoal, profile.carbsGoal, profile.fatGoal, profile.age, profile.heightCm, profile.weightKg, profile.activityLevel]);
 
   function selectNav(key: string) {
-    setActive(key);
-    if (key !== "home") toast.info(t.feature);
     setMobileMenu(false);
+    if (key === "analyze") { setMealModal(true); return; }
+    setView(key as View);
   }
 
-  function handleReset() {
-    setDayReset(true);
-    toast.success(t.reset);
-  }
+  function openAnalyze() { setAnalysisResult(undefined); setMealModal(true); }
 
-  function handleAnalyze() {
-    setMealModal(true);
+  function handleFile(file?: File) {
+    if (!file) return;
+    if (!file.type.startsWith("image/") || !["image/jpeg", "image/png", "image/webp"].includes(file.type)) { toast.error("استخدم صورة JPG أو PNG أو WEBP"); return; }
+    if (file.size > 5 * 1024 * 1024) { toast.error("حجم الصورة يجب أن يكون أقل من 5 ميغابايت"); return; }
+    const reader = new FileReader();
+    reader.onload = () => { setImageData(String(reader.result)); setImageMimeType(file.type as "image/jpeg" | "image/png" | "image/webp"); };
+    reader.readAsDataURL(file);
   }
 
   function submitMeal() {
-    setMealModal(false);
-    setMealText("");
-    toast.success(language === "ar" ? "تم استلام وجبتك للتحليل" : language === "en" ? "Your meal is ready for analysis" : "Öğününüz analiz için hazır");
+    if (!description.trim() && !imageData) { toast.error(t.emptyHint); return; }
+    analyzeMutation.mutate({ description: description.trim() || undefined, imageData, imageMimeType });
   }
 
-  return (
-    <div className={`min-h-screen overflow-x-hidden transition-colors duration-300 ${dark ? "bg-[#182522] text-[#e7f0eb]" : "bg-[#f8f8f4] text-[#1c2924]"}`} dir={direction}>
-      <header className={`sticky top-0 z-40 border-b backdrop-blur-xl transition-colors ${dark ? "border-white/10 bg-[#182522]/90" : "border-[#e4e9e2] bg-[#fbfbf8]/90"}`}>
-        <div className="mx-auto flex h-[68px] max-w-[1180px] items-center justify-between px-5 lg:px-8">
-          <Logo />
-          <nav className="hidden items-center gap-1 lg:flex">
-            {navItems.map(({ key, icon: Icon }) => (
-              <button
-                key={key}
-                onClick={() => selectNav(key)}
-                className={`group flex items-center gap-2 rounded-full px-4 py-2 text-[12px] font-semibold transition-all duration-200 ${active === key ? (dark ? "bg-white/10 text-[#8ddab8]" : "bg-[#e8f1eb] text-[#087b69]") : (dark ? "text-[#c9d7d0] hover:bg-white/5" : "text-[#6b716b] hover:bg-[#f1f4ef] hover:text-[#087b69]")}`}
-              >
-                <Icon size={15} strokeWidth={active === key ? 2.4 : 1.8} />
-                {t[key as keyof typeof t]}
-              </button>
-            ))}
-          </nav>
-          <div className="flex items-center gap-2">
-            <button onClick={() => setDark(!dark)} className={`grid h-9 w-9 place-items-center rounded-full transition-colors ${dark ? "bg-white/10 text-[#f5c873]" : "bg-[#eef2ed] text-[#718078] hover:text-[#087b69]"}`} aria-label={dark ? t.light : t.dark}>
-              {dark ? <Sun size={16} /> : <Moon size={16} />}
-            </button>
-            <button onClick={() => setPrivacyOpen(true)} className={`hidden h-9 w-9 place-items-center rounded-full transition-colors sm:grid ${dark ? "bg-white/10 text-[#9edabc]" : "bg-[#f2f4ed] text-[#728279] hover:text-[#087b69]"}`} aria-label={t.privacy}>
-              <ShieldCheck size={16} />
-            </button>
-            <div className="relative hidden sm:block">
-              <Globe2 className={`pointer-events-none absolute top-1/2 -translate-y-1/2 ${isArabic ? "right-3" : "left-3"}`} size={14} />
-              <select value={language} onChange={(e) => setLanguage(e.target.value as Language)} className={`h-9 appearance-none rounded-full border bg-transparent px-8 text-[11px] font-semibold outline-none ${isArabic ? "pl-7" : "pr-7"} ${dark ? "border-white/10 text-[#c9d7d0]" : "border-[#dfe7df] text-[#65726a]"}`} aria-label={t.language}>
-                <option value="ar">العربية</option>
-                <option value="en">EN</option>
-                <option value="tr">TR</option>
-              </select>
-              <ChevronDown className={`pointer-events-none absolute top-1/2 -translate-y-1/2 ${isArabic ? "left-2" : "right-2"}`} size={12} />
-            </div>
-            <button onClick={() => toast.success(t.sync)} className="hidden items-center gap-2 rounded-full bg-[#087b69] px-4 py-2.5 text-[11px] font-bold text-white shadow-[0_7px_18px_rgba(8,123,105,.18)] transition-transform hover:-translate-y-0.5 active:scale-95 sm:flex">
-              <LogIn size={14} /> {t.login}
-            </button>
-            <button onClick={() => setMobileMenu(!mobileMenu)} className={`grid h-9 w-9 place-items-center rounded-full lg:hidden ${dark ? "bg-white/10" : "bg-[#eef2ed]"}`}>
-              {mobileMenu ? <X size={17} /> : <Activity size={17} />}
-            </button>
-          </div>
-        </div>
-        {mobileMenu && <div className={`border-t px-5 py-3 lg:hidden ${dark ? "border-white/10 bg-[#182522]" : "border-[#e4e9e2] bg-[#fbfbf8]"}`}>
-          <div className="flex flex-wrap gap-2">
-            {navItems.map(({ key, icon: Icon }) => <button key={key} onClick={() => selectNav(key)} className="flex items-center gap-2 rounded-full bg-[#e8f1eb] px-3 py-2 text-xs font-semibold text-[#087b69]"><Icon size={14} />{t[key as keyof typeof t]}</button>)}
-            <button onClick={() => toast.success(t.sync)} className="flex items-center gap-2 rounded-full bg-[#087b69] px-3 py-2 text-xs font-semibold text-white"><LogIn size={14} />{t.login}</button>
-          </div>
-        </div>}
-      </header>
+  function closeMealModal() { if (analyzeMutation.isPending) return; setMealModal(false); setDescription(""); setImageData(undefined); setImageMimeType(undefined); setAnalysisResult(undefined); }
+  function saveProfile() { saveProfileMutation.mutate(profileForm); }
+  function mealTypeLabel(type: MealType) { return t[type]; }
 
-      <main className="mx-auto max-w-[1180px] px-5 pb-10 pt-6 lg:px-8 lg:pt-7">
-        <section className="hero-gradient relative min-h-[242px] overflow-hidden rounded-[26px] px-7 py-7 text-white shadow-[0_18px_35px_rgba(16,104,82,.12)] sm:px-12 sm:py-9">
-          <div className="absolute inset-0 opacity-[.13]" style={{ backgroundImage: "radial-gradient(rgba(255,255,255,.9) .8px, transparent .8px)", backgroundSize: "9px 9px" }} />
-          <div className="absolute -left-14 -top-24 h-64 w-64 rounded-full bg-[#bde6b5]/20 blur-3xl" />
-          <div className={`relative z-10 max-w-[700px] ${isArabic ? "mr-auto text-right" : "ml-auto text-left"}`}>
-            <div className="mb-4 flex items-center gap-2 text-[11px] font-semibold text-[#d4ecd2]"><span className="h-2 w-2 rounded-full bg-[#f1c269]" />{t.greeting}</div>
-            <h1 className="max-w-[620px] text-[31px] font-black leading-[1.35] tracking-[-0.035em] sm:text-[40px]">{t.headline}</h1>
-            <p className="mt-3 max-w-[560px] text-[13px] leading-7 text-[#d0e4d3] sm:text-[14px]">{t.subheadline}</p>
-            <button onClick={handleAnalyze} className="mt-5 inline-flex items-center gap-2 rounded-full bg-[#fffdf6] px-5 py-3 text-[12px] font-bold text-[#087b69] shadow-[0_8px_20px_rgba(0,0,0,.08)] transition-all hover:-translate-y-1 hover:shadow-[0_12px_25px_rgba(0,0,0,.14)] active:scale-95">
-              {t.analyzeNow} {isArabic ? <ArrowLeft size={15} /> : <ArrowRight size={15} />} <Sparkles size={14} />
-            </button>
-          </div>
-          <div className="absolute bottom-5 left-[13%] hidden h-[89px] w-[89px] rotate-[-7deg] rounded-full border-[8px] border-[#faf6e9] bg-[#fffdf3] shadow-[0_8px_16px_rgba(0,0,0,.12)] sm:grid sm:place-items-center">
-            <span className="text-[34px] font-light text-[#eca853]">49</span>
-            <span className="absolute -bottom-3 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full bg-white px-3 py-1 text-[8px] font-bold text-[#16866f] shadow-sm">{t.smart} ✨</span>
-          </div>
-        </section>
+  return <div className={`min-h-screen overflow-x-hidden transition-colors duration-300 ${dark ? "bg-[#182522] text-[#e7f0eb]" : "bg-[#f8f8f4] text-[#1c2924]"}`} dir={isArabic ? "rtl" : "ltr"}>
+    <header className={`sticky top-0 z-40 border-b backdrop-blur-xl ${dark ? "border-white/10 bg-[#182522]/90" : "border-[#e4e9e2] bg-[#fbfbf8]/90"}`}>
+      <div className="mx-auto flex h-[68px] max-w-[1180px] items-center justify-between px-5 lg:px-8"><Logo /><nav className="hidden items-center gap-1 lg:flex">{navItems.map(({ key, icon: Icon }) => <button key={key} onClick={() => selectNav(key)} className={`group flex items-center gap-2 rounded-full px-4 py-2 text-[12px] font-semibold transition-all duration-200 ${view === key ? (dark ? "bg-white/10 text-[#8ddab8]" : "bg-[#e8f1eb] text-[#087b69]") : (dark ? "text-[#c9d7d0] hover:bg-white/5" : "text-[#6b716b] hover:bg-[#f1f4ef] hover:text-[#087b69]")}`}><Icon size={15} />{t[key]}</button>)}</nav><div className="flex items-center gap-2"><button onClick={() => toggleTheme?.()} className={`grid h-9 w-9 place-items-center rounded-full ${dark ? "bg-white/10 text-[#f5c873]" : "bg-[#eef2ed] text-[#718078]"}`} aria-label={dark ? t.light : t.dark}>{dark ? <Sun size={16} /> : <Moon size={16} />}</button><button onClick={() => setPrivacyOpen(true)} className={`hidden h-9 w-9 place-items-center rounded-full sm:grid ${dark ? "bg-white/10 text-[#9edabc]" : "bg-[#f2f4ed] text-[#728279]"}`} aria-label={t.privacy}><ShieldCheck size={16} /></button><div className="relative hidden sm:block"><Globe2 className={`pointer-events-none absolute top-1/2 -translate-y-1/2 ${isArabic ? "right-3" : "left-3"}`} size={14} /><select value={language} onChange={(e) => setLanguage(e.target.value as Language)} className={`h-9 appearance-none rounded-full border bg-transparent px-8 text-[11px] font-semibold outline-none ${isArabic ? "pl-7" : "pr-7"} ${dark ? "border-white/10 text-[#c9d7d0]" : "border-[#dfe7df] text-[#65726a]"}`} aria-label={t.language}><option value="ar">العربية</option><option value="en">EN</option><option value="tr">TR</option></select><ChevronDown className={`pointer-events-none absolute top-1/2 -translate-y-1/2 ${isArabic ? "left-2" : "right-2"}`} size={12} /></div>{isAuthenticated ? <button onClick={() => void logout()} className="hidden items-center gap-2 rounded-full bg-[#087b69] px-4 py-2.5 text-[11px] font-bold text-white sm:flex"><LogIn size={14} />{user?.name || t.logout}</button> : <button onClick={startLogin} className="hidden items-center gap-2 rounded-full bg-[#087b69] px-4 py-2.5 text-[11px] font-bold text-white shadow-[0_7px_18px_rgba(8,123,105,.18)] sm:flex"><LogIn size={14} />{t.login}</button>}<button onClick={() => setMobileMenu(!mobileMenu)} className={`grid h-9 w-9 place-items-center rounded-full lg:hidden ${dark ? "bg-white/10" : "bg-[#eef2ed]"}`}>{mobileMenu ? <X size={17} /> : <Activity size={17} />}</button></div></div>
+      {mobileMenu && <div className={`border-t px-5 py-3 lg:hidden ${dark ? "border-white/10 bg-[#182522]" : "border-[#e4e9e2] bg-[#fbfbf8]"}`}><div className="flex flex-wrap gap-2">{navItems.map(({ key, icon: Icon }) => <button key={key} onClick={() => selectNav(key)} className="flex items-center gap-2 rounded-full bg-[#e8f1eb] px-3 py-2 text-xs font-semibold text-[#087b69]"><Icon size={14} />{t[key]}</button>)}{!isAuthenticated && <button onClick={startLogin} className="flex items-center gap-2 rounded-full bg-[#087b69] px-3 py-2 text-xs font-semibold text-white"><LogIn size={14} />{t.login}</button>}</div></div>}
+    </header>
 
-        <div className="mt-6 grid gap-5 lg:grid-cols-[1.12fr_.88fr]">
-          <section className={`zadak-meal-card order-2 rounded-[24px] p-5 shadow-[0_8px_25px_rgba(35,67,51,.05)] lg:order-1 sm:p-6 ${dark ? "bg-[#20312b]" : "bg-white"}`}>
-            <div className="mb-5 flex items-start justify-between gap-3">
-              <div>
-                <div className={`mb-1 text-[10px] font-semibold ${dark ? "text-[#8ca69b]" : "text-[#9ba69d]"}`}>{t.lastMeals}</div>
-                <h2 className={`text-[17px] font-extrabold ${dark ? "text-[#edf8ef]" : "text-[#1e3027]"}`}>{t.noMeals}</h2>
-              </div>
-              <button onClick={() => toast.info(t.soon)} className="flex items-center gap-1 rounded-full px-2 py-1 text-[11px] font-bold text-[#138872] transition-colors hover:bg-[#eff7ef]">{t.viewHistory} {isArabic ? <ArrowLeft size={13} /> : <ArrowRight size={13} />}</button>
-            </div>
-            <div className={`zadak-meal-empty flex min-h-[120px] flex-col items-center justify-center rounded-[17px] border border-dashed text-center ${dark ? "border-white/10 bg-[#1b2a25]" : "border-[#e4e9e1] bg-[#fdfdfa]"}`}>
-              <div className={`zadak-meal-icon mb-2 grid h-9 w-9 place-items-center rounded-full ${dark ? "bg-[#28483c] text-[#92d6b5]" : "bg-[#eef8ef] text-[#55a784]"}`}><Camera size={17} /></div>
-              <p className={`text-[11px] ${dark ? "text-[#b0c1b8]" : "text-[#7a847d]"}`}>{t.emptyHint}</p>
-              <button onClick={handleAnalyze} className="mt-2 text-[13px] font-extrabold text-[#11866f] underline decoration-[#bce0c2] decoration-2 underline-offset-4">{t.startAnalysis}</button>
-            </div>
-          </section>
+    {view === "home" && <main className="mx-auto max-w-[1180px] px-5 pb-10 pt-6 lg:px-8 lg:pt-7"><section className="hero-gradient relative min-h-[242px] overflow-hidden rounded-[26px] px-7 py-7 text-white shadow-[0_18px_35px_rgba(16,104,82,.12)] sm:px-12 sm:py-9"><div className="absolute inset-0 opacity-[.13]" style={{ backgroundImage: "radial-gradient(rgba(255,255,255,.9) .8px, transparent .8px)", backgroundSize: "9px 9px" }} /><div className="absolute -left-14 -top-24 h-64 w-64 rounded-full bg-[#bde6b5]/20 blur-3xl" /><div className={`relative z-10 max-w-[700px] ${isArabic ? "mr-auto text-right" : "ml-auto text-left"}`}><div className="mb-4 flex items-center gap-2 text-[11px] font-semibold text-[#d4ecd2]"><span className="h-2 w-2 rounded-full bg-[#f1c269]" />{t.greeting}</div><h1 className="max-w-[620px] text-[31px] font-black leading-[1.35] tracking-[-0.035em] sm:text-[40px]">{t.headline}</h1><p className="mt-3 max-w-[560px] text-[13px] leading-7 text-[#d0e4d3] sm:text-[14px]">{t.subheadline}</p><button onClick={openAnalyze} className="mt-5 inline-flex items-center gap-2 rounded-full bg-[#fffdf6] px-5 py-3 text-[12px] font-bold text-[#087b69] shadow-[0_8px_20px_rgba(0,0,0,.08)] transition-all hover:-translate-y-1 active:scale-95">{t.analyzeNow} {isArabic ? <ArrowLeft size={15} /> : <ArrowRight size={15} />} <Sparkles size={14} /></button></div><div className="absolute bottom-5 left-[13%] hidden h-[89px] w-[89px] rotate-[-7deg] rounded-full border-[8px] border-[#faf6e9] bg-[#fffdf3] shadow-[0_8px_16px_rgba(0,0,0,.12)] sm:grid sm:place-items-center"><span className="text-[34px] font-light text-[#eca853]">49</span><span className="absolute -bottom-3 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full bg-white px-3 py-1 text-[8px] font-bold text-[#16866f] shadow-sm">{t.smart} ✨</span></div></section>
+      {!isAuthenticated && !authLoading && <div className={`mt-4 flex items-center justify-between gap-4 rounded-2xl border px-4 py-3 text-xs ${dark ? "border-[#355546] bg-[#20312b] text-[#bcd4c3]" : "border-[#d9ebd9] bg-[#f4fbf4] text-[#5d7866]"}`}><span className="flex items-center gap-2"><LockKeyhole size={14} className="text-[#16866f]" />{t.guestHint}</span><button onClick={startLogin} className="shrink-0 rounded-full bg-[#087b69] px-3 py-2 font-bold text-white">{t.signInToSync}</button></div>}
+      <div className="mt-6 grid gap-5 lg:grid-cols-[1.12fr_.88fr]"><section className={`zadak-meal-card order-2 rounded-[24px] p-5 shadow-[0_8px_25px_rgba(35,67,51,.05)] lg:order-1 sm:p-6 ${dark ? "bg-[#20312b]" : "bg-white"}`}><div className="mb-5 flex items-start justify-between gap-3"><div><div className={`mb-1 text-[10px] font-semibold ${dark ? "text-[#8ca69b]" : "text-[#9ba69d]"}`}>{t.lastMeals}</div><h2 className={`text-[17px] font-extrabold ${dark ? "text-[#edf8ef]" : "text-[#1e3027]"}`}>{todayMeals.length ? `${todayMeals.length} ${t.allMeals}` : t.noMeals}</h2></div><button onClick={() => setView("history")} className="flex items-center gap-1 rounded-full px-2 py-1 text-[11px] font-bold text-[#138872] hover:bg-[#eff7ef]">{t.viewHistory} {isArabic ? <ArrowLeft size={13} /> : <ArrowRight size={13} />}</button></div>{todayMeals.length === 0 ? <div className={`zadak-meal-empty flex min-h-[120px] flex-col items-center justify-center rounded-[17px] border border-dashed text-center ${dark ? "border-white/10 bg-[#1b2a25]" : "border-[#e4e9e1] bg-[#fdfdfa]"}`}><div className="zadak-meal-icon mb-2 grid h-9 w-9 place-items-center rounded-full bg-[#eef8ef] text-[#55a784]"><Camera size={17} /></div><p className={`text-[11px] ${dark ? "text-[#b0c1b8]" : "text-[#7a847d]"}`}>{t.emptyHint}</p><button onClick={openAnalyze} className="mt-2 text-[13px] font-extrabold text-[#11866f] underline decoration-[#bce0c2] decoration-2 underline-offset-4">{t.startAnalysis}</button></div> : <div className="space-y-2">{todayMeals.slice(0, 3).map((meal) => <MealRow key={meal.id} meal={meal} language={language} dark={dark} label={mealTypeLabel(meal.mealType as MealType)} onDelete={() => deleteMutation.mutate({ id: meal.id })} t={t} />)}</div>}</section>
+        <section className={`order-1 rounded-[24px] p-5 shadow-[0_8px_25px_rgba(35,67,51,.05)] lg:order-2 sm:p-6 ${dark ? "bg-[#20312b]" : "bg-white"}`}><div className="mb-5 flex items-start justify-between"><div><div className={`mb-1 text-[10px] font-semibold ${dark ? "text-[#8ca69b]" : "text-[#9ba69d]"}`}>{t.today}</div><div className="flex items-baseline gap-1"><span className={`text-[25px] font-black ${dark ? "text-[#eaf7ed]" : "text-[#1d3328]"}`}>{formatNumber(totals.calories, language)}</span><span className={`text-[11px] ${dark ? "text-[#9fb3a8]" : "text-[#78847b]"}`}>{t.calories}</span></div></div><button onClick={() => isAuthenticated ? clearMutation.mutate() : startLogin()} className={`flex items-center gap-1.5 rounded-full px-3 py-2 text-[11px] font-bold ${dark ? "bg-[#29453a] text-[#b5dec2]" : "bg-[#f4f7ee] text-[#6c846e]"}`}><Sun size={14} />{t.newDay}</button></div><div className="mb-5 flex items-center justify-between"><div className="relative grid h-[54px] w-[54px] place-items-center rounded-full" style={{ background: `conic-gradient(#2c9d7b ${Math.min(100, (totals.calories / profile.calorieGoal) * 100) * 3.6}deg, #e8eee9 0deg)` }}><div className={`grid h-[43px] w-[43px] place-items-center rounded-full text-[10px] font-bold ${dark ? "bg-[#20312b] text-[#b0c5b8]" : "bg-white text-[#738177]"}`}>{Math.round((totals.calories / profile.calorieGoal) * 100)}%</div></div><div className="text-left"><div className={`text-[10px] ${dark ? "text-[#9fb3a8]" : "text-[#869188]"}`}>{t.remaining}</div><div className={`mt-1 text-[16px] font-black ${dark ? "text-[#eaf7ed]" : "text-[#20372a]"}`}>{formatNumber(Math.max(0, profile.calorieGoal - totals.calories), language)} <span className="text-[10px] font-medium">{t.calories}</span></div></div></div><div><MacroRow label={t.protein} current={totals.protein} goal={profile.proteinGoal} color="#299c78" unit="غ" /><MacroRow label={t.carbs} current={totals.carbs} goal={profile.carbsGoal} color="#f0b45a" unit="غ" /><MacroRow label={t.fats} current={totals.fat} goal={profile.fatGoal} color="#8c7ed1" unit="غ" /></div></section></div>
+      <section className={`mt-5 flex flex-col items-start justify-between gap-4 rounded-[18px] border px-5 py-4 shadow-[0_5px_18px_rgba(35,67,51,.03)] sm:flex-row sm:items-center ${dark ? "border-[#385449] bg-[#20312b]" : "border-[#f0e6cc] bg-[#fffaf0]"}`}><div className="flex items-center gap-3"><div className="grid h-9 w-9 place-items-center rounded-full bg-[#fff0c9] text-[#cf9b45]"><LockKeyhole size={15} /></div><div><div className={`text-[12px] font-extrabold ${dark ? "text-[#e9f3e9]" : "text-[#455148]"}`}>{t.privacyTitle}</div><p className={`mt-1 text-[10px] ${dark ? "text-[#9db2a5]" : "text-[#90948d]"}`}>{t.privacyText}</p></div></div><button onClick={() => setPrivacyOpen(true)} className="rounded-full border border-[#e9d9a9] bg-white/50 px-4 py-2 text-[11px] font-bold text-[#8c783f]">{t.privacy}</button></section></main>}
 
-          <section className={`order-1 rounded-[24px] p-5 shadow-[0_8px_25px_rgba(35,67,51,.05)] lg:order-2 sm:p-6 ${dark ? "bg-[#20312b]" : "bg-white"}`}>
-            <div className="mb-5 flex items-start justify-between">
-              <div>
-                <div className={`mb-1 text-[10px] font-semibold ${dark ? "text-[#8ca69b]" : "text-[#9ba69d]"}`}>{t.today}</div>
-                <div className="flex items-baseline gap-1"><span className={`text-[25px] font-black ${dark ? "text-[#eaf7ed]" : "text-[#1d3328]"}`}>{dayReset ? "٠" : "٠"}</span><span className={`text-[11px] ${dark ? "text-[#9fb3a8]" : "text-[#78847b]"}`}>{t.calories}</span></div>
-              </div>
-              <button onClick={handleReset} className={`flex items-center gap-1.5 rounded-full px-3 py-2 text-[11px] font-bold transition-colors ${dark ? "bg-[#29453a] text-[#b5dec2] hover:bg-[#315444]" : "bg-[#f4f7ee] text-[#6c846e] hover:bg-[#eaf3e8]"}`}><Sun size={14} /> {t.newDay}</button>
-            </div>
-            <div className="mb-5 flex items-center justify-between">
-              <div className="relative grid h-[54px] w-[54px] place-items-center rounded-full" style={{ background: "conic-gradient(#2c9d7b 0deg, #e8eee9 0deg)" }}>
-                <div className={`grid h-[43px] w-[43px] place-items-center rounded-full text-[10px] font-bold ${dark ? "bg-[#20312b] text-[#b0c5b8]" : "bg-white text-[#738177]"}`}>0%</div>
-              </div>
-              <div className="text-left"><div className={`text-[10px] ${dark ? "text-[#9fb3a8]" : "text-[#869188]"}`}>{t.remaining}</div><div className={`mt-1 text-[16px] font-black ${dark ? "text-[#eaf7ed]" : "text-[#20372a]"}`}>٢٬١٣٩ <span className="text-[10px] font-medium">{t.calories}</span></div></div>
-            </div>
-            <div>{nutrition.map((item) => <MacroRow key={item.key} label={t[item.key as keyof typeof t]} value={item.value} color={item.color} />)}</div>
-          </section>
-        </div>
+    {view === "history" && <HistoryView meals={meals} t={t} language={language} dark={dark} onDelete={(id) => deleteMutation.mutate({ id })} onAnalyze={openAnalyze} />}
+    {view === "stats" && <StatsView meals={meals} profile={profile} t={t} language={language} dark={dark} weeklyAverage={weeklyAverage} />}
+    {view === "profile" && <ProfileView form={profileForm} setForm={setProfileForm} t={t} dark={dark} onSave={saveProfile} saving={saveProfileMutation.isPending} isAuthenticated={isAuthenticated} onLogin={startLogin} user={user} onLogout={() => void logout()} />}
 
-        <section className={`mt-5 flex flex-col items-start justify-between gap-4 rounded-[18px] border px-5 py-4 shadow-[0_5px_18px_rgba(35,67,51,.03)] sm:flex-row sm:items-center ${dark ? "border-[#385449] bg-[#20312b]" : "border-[#f0e6cc] bg-[#fffaf0]"}`}>
-          <div className="flex items-center gap-3">
-            <div className={`grid h-9 w-9 place-items-center rounded-full ${dark ? "bg-[#345348] text-[#f2c37b]" : "bg-[#fff0c9] text-[#cf9b45]"}`}><LockKeyhole size={15} /></div>
-            <div><div className={`text-[12px] font-extrabold ${dark ? "text-[#e9f3e9]" : "text-[#455148]"}`}>{t.privacyTitle}</div><p className={`mt-1 text-[10px] ${dark ? "text-[#9db2a5]" : "text-[#90948d]"}`}>{t.privacyText}</p></div>
-          </div>
-          <button onClick={() => setPrivacyOpen(true)} className="rounded-full border border-[#e9d9a9] bg-white/50 px-4 py-2 text-[11px] font-bold text-[#8c783f] transition-colors hover:bg-[#fff3d3] dark:border-[#596a45] dark:bg-[#263c32] dark:text-[#d7c17c]">{t.privacy}</button>
-        </section>
-      </main>
+    <footer className="mx-auto flex max-w-[1180px] justify-end px-5 pb-5 lg:px-8"><span className={`rounded-full px-3 py-1.5 text-[9px] font-semibold shadow-sm ${dark ? "bg-[#20312b] text-[#9db5a8]" : "bg-white text-[#9da59d]"}`}>Made with Manus ◈</span></footer>
 
-      <footer className="mx-auto flex max-w-[1180px] justify-end px-5 pb-5 lg:px-8"><span className={`rounded-full px-3 py-1.5 text-[9px] font-semibold shadow-sm ${dark ? "bg-[#20312b] text-[#9db5a8]" : "bg-white text-[#9da59d]"}`}>Made with Manus ◈</span></footer>
+    {privacyOpen && <div className="zadak-modal-backdrop fixed inset-0 z-50 grid place-items-center bg-[#10271f]/35 p-5 backdrop-blur-sm" onClick={() => setPrivacyOpen(false)}><div className={`zadak-modal-panel relative w-full max-w-md rounded-[25px] p-6 shadow-2xl ${dark ? "bg-[#20312b] text-[#e8f5ec]" : "bg-white text-[#23342b]"}`} onClick={(e) => e.stopPropagation()}><button onClick={() => setPrivacyOpen(false)} className="absolute left-4 top-4 grid h-8 w-8 place-items-center rounded-full bg-black/5"><X size={15} /></button><div className="mb-5 grid h-12 w-12 place-items-center rounded-full bg-[#eaf6eb] text-[#16866f]"><ShieldCheck size={22} /></div><h3 className="text-xl font-black">{t.privacyTitle}</h3><p className={`mt-3 text-sm leading-7 ${dark ? "text-[#b3c7ba]" : "text-[#738078]"}`}>{t.privacyText}</p><div className={`mt-5 space-y-3 rounded-2xl p-4 text-xs leading-6 ${dark ? "bg-[#182a23] text-[#c0d4c6]" : "bg-[#f6faf4] text-[#65746a]"}`}><div className="flex gap-2"><Check size={15} className="mt-1 shrink-0 text-[#169374]" /> لا تُرسل الصور إلا عند طلب التحليل.</div><div className="flex gap-2"><Check size={15} className="mt-1 shrink-0 text-[#169374]" /> يمكنك حذف سجل اليوم في أي وقت.</div><div className="flex gap-2"><Check size={15} className="mt-1 shrink-0 text-[#169374]" /> بياناتك محفوظة بحسابك ويمكنك حذفها من السجل.</div></div><button onClick={() => setPrivacyOpen(false)} className="mt-5 w-full rounded-full bg-[#087b69] py-3 text-sm font-bold text-white">{t.close}</button></div></div>}
 
-      {privacyOpen && <div className="zadak-modal-backdrop fixed inset-0 z-50 grid place-items-center bg-[#10271f]/35 p-5 backdrop-blur-sm" onClick={() => setPrivacyOpen(false)}>
-        <div className={`zadak-modal-panel relative w-full max-w-md rounded-[25px] p-6 shadow-2xl ${dark ? "bg-[#20312b] text-[#e8f5ec]" : "bg-white text-[#23342b]"}`} onClick={(e) => e.stopPropagation()}>
-          <button onClick={() => setPrivacyOpen(false)} className="absolute left-4 top-4 grid h-8 w-8 place-items-center rounded-full bg-black/5"><X size={15} /></button>
-          <div className="mb-5 grid h-12 w-12 place-items-center rounded-full bg-[#eaf6eb] text-[#16866f]"><ShieldCheck size={22} /></div>
-          <h3 className="text-xl font-black">{t.privacyTitle}</h3>
-          <p className={`mt-3 text-sm leading-7 ${dark ? "text-[#b3c7ba]" : "text-[#738078]"}`}>{t.privacyText}</p>
-          <div className={`mt-5 space-y-3 rounded-2xl p-4 text-xs leading-6 ${dark ? "bg-[#182a23] text-[#c0d4c6]" : "bg-[#f6faf4] text-[#65746a]"}`}>
-            <div className="flex gap-2"><Check size={15} className="mt-1 shrink-0 text-[#169374]" /> لا تُرسل الصور إلا عند طلب التحليل.</div>
-            <div className="flex gap-2"><Check size={15} className="mt-1 shrink-0 text-[#169374]" /> يمكنك حذف سجل اليوم في أي وقت.</div>
-            <div className="flex gap-2"><Check size={15} className="mt-1 shrink-0 text-[#169374]" /> بياناتك محلية في هذه النسخة التجريبية.</div>
-          </div>
-          <button onClick={() => setPrivacyOpen(false)} className="mt-5 w-full rounded-full bg-[#087b69] py-3 text-sm font-bold text-white">{t.close}</button>
-        </div>
-      </div>}
-
-      {mealModal && <div className="zadak-modal-backdrop fixed inset-0 z-50 grid place-items-center bg-[#10271f]/35 p-5 backdrop-blur-sm" onClick={() => setMealModal(false)}>
-        <div className={`zadak-modal-panel relative w-full max-w-lg rounded-[25px] p-6 shadow-2xl ${dark ? "bg-[#20312b] text-[#e8f5ec]" : "bg-white text-[#23342b]"}`} onClick={(e) => e.stopPropagation()}>
-          <button onClick={() => setMealModal(false)} className="absolute left-4 top-4 grid h-8 w-8 place-items-center rounded-full bg-black/5"><X size={15} /></button>
-          <div className="flex items-center gap-3"><div className="grid h-11 w-11 place-items-center rounded-full bg-[#eaf6eb] text-[#16866f]"><Camera size={19} /></div><div><h3 className="text-xl font-black">{t.analyze}</h3><p className={`mt-1 text-xs ${dark ? "text-[#adc4b6]" : "text-[#7b897e]"}`}>{t.emptyHint}</p></div></div>
-          <div className="mt-6 grid grid-cols-2 gap-3"><button onClick={submitMeal} className={`flex h-28 flex-col items-center justify-center gap-2 rounded-2xl border border-dashed ${dark ? "border-white/15 bg-[#182a23]" : "border-[#dbe8dc] bg-[#f8fcf7]"}`}><Camera size={21} className="text-[#16866f]" /><span className="text-xs font-bold">{language === "ar" ? "التقاط صورة" : language === "en" ? "Take a photo" : "Fotoğraf çek"}</span></button><button onClick={submitMeal} className={`flex h-28 flex-col items-center justify-center gap-2 rounded-2xl border border-dashed ${dark ? "border-white/15 bg-[#182a23]" : "border-[#dbe8dc] bg-[#f8fcf7]"}`}><Plus size={21} className="text-[#16866f]" /><span className="text-xs font-bold">{t.addMeal}</span></button></div>
-          <div className="mt-4"><textarea value={mealText} onChange={(e) => setMealText(e.target.value)} placeholder={language === "ar" ? "أو اكتب وصفاً لوجبتك هنا..." : language === "en" ? "Or describe your meal here..." : "Veya öğününüzü açıklayın..."} className={`min-h-24 w-full resize-none rounded-2xl border p-4 text-sm outline-none ring-[#70b99a] focus:ring-2 ${dark ? "border-white/10 bg-[#182a23] placeholder:text-[#789084]" : "border-[#e1e9e1] bg-[#fbfdf9] placeholder:text-[#9aa69d]"}`} /></div>
-          <button onClick={submitMeal} disabled={!mealText.trim()} className="mt-4 flex w-full items-center justify-center gap-2 rounded-full bg-[#087b69] py-3 text-sm font-bold text-white transition-opacity disabled:cursor-not-allowed disabled:opacity-45">{t.startAnalysis} <Zap size={15} /></button>
-        </div>
-      </div>}
-    </div>
-  );
+    {mealModal && <div className="zadak-modal-backdrop fixed inset-0 z-50 grid place-items-center bg-[#10271f]/45 p-5 backdrop-blur-sm" onClick={closeMealModal}><div className={`zadak-modal-panel relative max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-[25px] p-6 shadow-2xl ${dark ? "bg-[#20312b] text-[#e8f5ec]" : "bg-white text-[#23342b]"}`} onClick={(e) => e.stopPropagation()}><button onClick={closeMealModal} className="absolute left-4 top-4 grid h-8 w-8 place-items-center rounded-full bg-black/5"><X size={15} /></button>{analysisResult ? <div><div className="mb-5 flex items-center gap-3"><div className="grid h-11 w-11 place-items-center rounded-full bg-[#eaf6eb] text-[#16866f]"><Check size={20} /></div><div><h3 className="text-xl font-black">{t.analysisDone}</h3><p className="mt-1 text-xs text-[#7b897e]">{analysisResult.mealName}</p></div></div><div className="grid grid-cols-4 gap-2">{[[t.calories, analysisResult.calories, "#299c78"], [t.protein, analysisResult.protein, "#f0b45a"], [t.carbs, analysisResult.carbs, "#8c7ed1"], [t.fats, analysisResult.fat, "#dd8d77"]].map(([label, value, color]) => <div key={String(label)} className={`rounded-2xl p-3 text-center ${dark ? "bg-[#182a23]" : "bg-[#f7faf6]"}`}><div className="text-[10px] text-[#7b897e]">{label}</div><div className="mt-1 text-lg font-black" style={{ color: String(color) }}>{value}</div><div className="text-[9px] text-[#8d968f]">{label === t.calories ? t.calories : "غ"}</div></div>)}</div><p className={`mt-5 rounded-2xl p-4 text-sm leading-7 ${dark ? "bg-[#182a23] text-[#c2d5c7]" : "bg-[#f6faf4] text-[#65746a]"}`}>{analysisResult.summary}</p>{analysisResult.items?.length ? <div className="mt-5"><h4 className="mb-2 text-xs font-extrabold">{t.items}</h4><div className="flex flex-wrap gap-2">{analysisResult.items.map((item) => <span key={item} className="rounded-full bg-[#eaf6eb] px-3 py-1.5 text-[11px] font-semibold text-[#16866f]">{item}</span>)}</div></div> : null}<div className="mt-5 flex items-center justify-between text-[11px] text-[#7b897e]"><span>{t.confidence}: {analysisResult.confidence}%</span><span>{t.estimated}</span></div><button onClick={closeMealModal} className="mt-5 w-full rounded-full bg-[#087b69] py-3 text-sm font-bold text-white">{t.close}</button></div> : <div><div className="flex items-center gap-3"><div className="grid h-11 w-11 place-items-center rounded-full bg-[#eaf6eb] text-[#16866f]"><Sparkles size={19} /></div><div><h3 className="text-xl font-black">{t.analyze}</h3><p className="mt-1 text-xs text-[#7b897e]">{t.emptyHint}</p></div></div><div className="mt-6 grid grid-cols-2 gap-3"><button onClick={() => fileRef.current?.click()} className={`flex h-28 flex-col items-center justify-center gap-2 rounded-2xl border border-dashed ${dark ? "border-white/15 bg-[#182a23]" : "border-[#dbe8dc] bg-[#f8fcf7]"}`}><ImagePlus size={21} className="text-[#16866f]" /><span className="text-xs font-bold">{t.uploadPhoto}</span></button><button onClick={() => fileRef.current?.click()} className={`flex h-28 flex-col items-center justify-center gap-2 rounded-2xl border border-dashed ${dark ? "border-white/15 bg-[#182a23]" : "border-[#dbe8dc] bg-[#f8fcf7]"}`}><Camera size={21} className="text-[#16866f]" /><span className="text-xs font-bold">{t.takePhoto}</span></button></div><input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={(e) => handleFile(e.target.files?.[0])} />{imageData && <div className="relative mt-4 overflow-hidden rounded-2xl"><img src={imageData} alt="meal preview" className="h-40 w-full object-cover" /><button onClick={() => { setImageData(undefined); setImageMimeType(undefined); }} className="absolute left-3 top-3 grid h-8 w-8 place-items-center rounded-full bg-black/55 text-white"><X size={15} /></button></div>}<div className="mt-4"><textarea value={description} onChange={(e) => setDescription(e.target.value)} placeholder={t.descriptionPlaceholder} className={`min-h-24 w-full resize-none rounded-2xl border p-4 text-sm outline-none ring-[#70b99a] focus:ring-2 ${dark ? "border-white/10 bg-[#182a23] placeholder:text-[#789084]" : "border-[#e1e9e1] bg-[#fbfdf9] placeholder:text-[#9aa69d]"}`} /></div><button onClick={submitMeal} disabled={analyzeMutation.isPending || (!description.trim() && !imageData)} className="mt-4 flex w-full items-center justify-center gap-2 rounded-full bg-[#087b69] py-3 text-sm font-bold text-white transition-opacity disabled:cursor-not-allowed disabled:opacity-45">{analyzeMutation.isPending ? <><Activity className="animate-spin" size={15} />{t.analyzing}</> : <>{t.startAnalysis}<Zap size={15} /></>}</button>{analyzeMutation.error && <p className="mt-3 text-center text-xs font-semibold text-red-600">{analyzeMutation.error.message}</p>}</div>}</div></div>}
+  </div>;
 }
+
+function MealRow({ meal, language, dark, label, onDelete, t }: { meal: { id: number; mealName: string; calories: number; protein: number; carbs: number; fat: number; mealType: string; createdAt: Date }; language: Language; dark: boolean; label: string; onDelete: () => void; t: Labels }) {
+  return <div className={`flex items-center justify-between gap-3 rounded-2xl border p-3 transition-all hover:-translate-y-0.5 hover:shadow-md ${dark ? "border-white/10 bg-[#1b2a25]" : "border-[#edf0eb] bg-[#fdfdfa]"}`}><div className="flex min-w-0 items-center gap-3"><div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-[#eaf6eb] text-[#16866f]"><Utensils size={17} /></div><div className="min-w-0"><div className="truncate text-xs font-extrabold">{meal.mealName}</div><div className="mt-1 flex items-center gap-2 text-[10px] text-[#849087]"><span>{label}</span><span>•</span><span>{new Date(meal.createdAt).toLocaleTimeString(language === "ar" ? "ar-EG" : language, { hour: "2-digit", minute: "2-digit" })}</span></div></div></div><div className="flex items-center gap-3"><div className="text-left"><div className="text-sm font-black text-[#16866f]">{meal.calories}</div><div className="text-[9px] text-[#8c978f]">{t.calories}</div></div><button onClick={onDelete} className="grid h-8 w-8 place-items-center rounded-full text-[#a2aaa4] hover:bg-red-50 hover:text-red-500" aria-label={t.delete}><Trash2 size={14} /></button></div></div>;
+}
+
+function HistoryView({ meals, t, language, dark, onDelete, onAnalyze }: { meals: Array<{ id: number; mealName: string; calories: number; protein: number; carbs: number; fat: number; mealType: string; createdAt: Date; aiSummary: string | null }>; t: Labels; language: Language; dark: boolean; onDelete: (id: number) => void; onAnalyze: () => void }) {
+  return <main className="mx-auto max-w-[1180px] px-5 pb-10 pt-8 lg:px-8"><div className="mb-6 flex items-end justify-between gap-4"><div><div className="mb-2 text-xs font-semibold text-[#8a988e]">{t.history}</div><h1 className="text-3xl font-black">{t.allMeals}</h1></div><button onClick={onAnalyze} className="flex items-center gap-2 rounded-full bg-[#087b69] px-4 py-3 text-xs font-bold text-white"><Plus size={15} />{t.addMeal}</button></div>{meals.length === 0 ? <div className={`rounded-[24px] p-12 text-center shadow-sm ${dark ? "bg-[#20312b]" : "bg-white"}`}><History className="mx-auto mb-4 text-[#8fc5a8]" size={36} /><h2 className="text-xl font-black">{t.noHistory}</h2><p className="mt-2 text-sm text-[#7d897f]">{t.emptyHint}</p></div> : <div className="grid gap-3 md:grid-cols-2">{meals.map((meal) => <div key={meal.id} className={`rounded-[22px] p-4 shadow-sm transition-all hover:-translate-y-1 hover:shadow-lg ${dark ? "bg-[#20312b]" : "bg-white"}`}><div className="flex items-start justify-between gap-3"><div><h3 className="font-extrabold">{meal.mealName}</h3><div className="mt-1 flex items-center gap-2 text-[10px] text-[#8a978f]"><Clock3 size={12} />{new Date(meal.createdAt).toLocaleString(language === "ar" ? "ar-EG" : language)}<span>•</span>{t[meal.mealType as MealType]}</div></div><button onClick={() => onDelete(meal.id)} className="grid h-8 w-8 place-items-center rounded-full text-[#9da8a0] hover:bg-red-50 hover:text-red-500"><Trash2 size={14} /></button></div><div className="mt-4 grid grid-cols-4 gap-2">{[[t.calories, meal.calories], [t.protein, meal.protein], [t.carbs, meal.carbs], [t.fats, meal.fat]].map(([label, value]) => <div key={String(label)} className={`rounded-xl p-2 text-center ${dark ? "bg-[#182a23]" : "bg-[#f7faf6]"}`}><div className="text-[9px] text-[#8b978e]">{label}</div><div className="mt-1 text-sm font-black text-[#16866f]">{value}{label === t.calories ? "" : "غ"}</div></div>)}</div></div>)}</div>}</main>;
+}
+
+function StatsView({ meals, profile, t, language, dark, weeklyAverage }: { meals: Array<{ calories: number; protein: number; carbs: number; fat: number; createdAt: Date }>; profile: { calorieGoal: number; proteinGoal: number }; t: Labels; language: Language; dark: boolean; weeklyAverage: number }) {
+  const recent = meals.filter((meal) => new Date(meal.createdAt).getTime() >= Date.now() - 7 * 86_400_000);
+  const avgProtein = recent.length ? Math.round(recent.reduce((sum, meal) => sum + meal.protein, 0) / recent.length) : 0;
+  const maxCalories = Math.max(profile.calorieGoal, ...Array.from({ length: 7 }, (_, index) => recent.filter((meal) => new Date(meal.createdAt).getDay() === (new Date().getDay() - index + 7) % 7).reduce((sum, meal) => sum + meal.calories, 0)));
+  return <main className="mx-auto max-w-[1180px] px-5 pb-10 pt-8 lg:px-8"><div className="mb-6"><div className="mb-2 text-xs font-semibold text-[#8a988e]">{t.stats}</div><h1 className="text-3xl font-black">{t.statsTitle}</h1></div><div className="grid gap-4 sm:grid-cols-3"><StatCard label={t.totalMeals} value={String(recent.length)} icon={<Utensils size={18} />} dark={dark} /><StatCard label={t.avgCalories} value={formatNumber(weeklyAverage, language)} icon={<Zap size={18} />} dark={dark} /><StatCard label={t.avgProtein} value={`${avgProtein}غ`} icon={<Activity size={18} />} dark={dark} /></div><section className={`mt-5 rounded-[24px] p-6 shadow-sm ${dark ? "bg-[#20312b]" : "bg-white"}`}><div className="mb-5 flex items-center justify-between"><h2 className="font-black">{t.weekly}</h2><span className="text-xs text-[#8a978e]">{profile.calorieGoal} {t.calories}</span></div><div className="flex h-52 items-end justify-between gap-2">{Array.from({ length: 7 }, (_, index) => { const day = (new Date().getDay() - 6 + index + 7) % 7; const total = recent.filter((meal) => new Date(meal.createdAt).getDay() === day).reduce((sum, meal) => sum + meal.calories, 0); const height = maxCalories ? Math.max(8, (total / maxCalories) * 100) : 8; return <div key={index} className="flex h-full flex-1 flex-col items-center justify-end gap-2"><div className="w-full max-w-12 rounded-t-xl bg-gradient-to-t from-[#087b69] to-[#79c39a] transition-all" style={{ height: `${height}%` }} /><span className="text-[10px] text-[#8b978f]">{new Date(Date.now() - (6 - index) * 86_400_000).toLocaleDateString(language === "ar" ? "ar-EG" : language, { weekday: "short" })}</span></div>; })}</div></section></main>;
+}
+
+function StatCard({ label, value, icon, dark }: { label: string; value: string; icon: React.ReactNode; dark: boolean }) { return <div className={`rounded-[22px] p-5 shadow-sm ${dark ? "bg-[#20312b]" : "bg-white"}`}><div className="mb-4 grid h-9 w-9 place-items-center rounded-xl bg-[#eaf6eb] text-[#16866f]">{icon}</div><div className="text-[11px] text-[#87948b]">{label}</div><div className="mt-1 text-2xl font-black">{value}</div></div>; }
+
+function ProfileView({ form, setForm, t, dark, onSave, saving, isAuthenticated, onLogin, user, onLogout }: { form: typeof defaultProfile; setForm: React.Dispatch<React.SetStateAction<typeof defaultProfile>>; t: Labels; dark: boolean; onSave: () => void; saving: boolean; isAuthenticated: boolean; onLogin: () => void; user: { name?: string | null; email?: string | null } | null; onLogout: () => void }) {
+  const update = (key: keyof typeof defaultProfile, value: string) => setForm((current) => ({ ...current, [key]: ["age", "heightCm", "weightKg", "calorieGoal", "proteinGoal", "carbsGoal", "fatGoal"].includes(key) ? (value === "" ? null : Number(value)) : value }));
+  return <main className="mx-auto max-w-[900px] px-5 pb-10 pt-8 lg:px-8"><div className="mb-6"><div className="mb-2 text-xs font-semibold text-[#8a988e]">{t.profile}</div><h1 className="text-3xl font-black">{user?.name || t.targetSettings}</h1>{user?.email && <p className="mt-1 text-sm text-[#839087]">{user.email}</p>}</div>{!isAuthenticated ? <div className={`rounded-[24px] p-8 text-center shadow-sm ${dark ? "bg-[#20312b]" : "bg-white"}`}><UserRound className="mx-auto mb-4 text-[#8fc5a8]" size={36} /><h2 className="text-xl font-black">{t.signInToSync}</h2><button onClick={onLogin} className="mt-5 rounded-full bg-[#087b69] px-5 py-3 text-sm font-bold text-white">{t.login}</button></div> : <><section className={`rounded-[24px] p-6 shadow-sm ${dark ? "bg-[#20312b]" : "bg-white"}`}><h2 className="mb-5 text-lg font-black">{t.targetSettings}</h2><div className="grid gap-4 sm:grid-cols-2"><NumberField label={t.calorieGoal} value={form.calorieGoal} onChange={(value) => update("calorieGoal", value)} /><NumberField label={t.proteinGoal} value={form.proteinGoal} onChange={(value) => update("proteinGoal", value)} /><NumberField label={t.carbsGoal} value={form.carbsGoal} onChange={(value) => update("carbsGoal", value)} /><NumberField label={t.fatGoal} value={form.fatGoal} onChange={(value) => update("fatGoal", value)} /><NumberField label={t.age} value={form.age} onChange={(value) => update("age", value)} /><NumberField label={t.height} value={form.heightCm} onChange={(value) => update("heightCm", value)} /><NumberField label={t.weight} value={form.weightKg} onChange={(value) => update("weightKg", value)} /><label className="text-xs font-bold text-[#68776d]">{t.activity}<select value={form.activityLevel} onChange={(e) => update("activityLevel", e.target.value)} className={`mt-2 h-11 w-full rounded-xl border px-3 text-sm outline-none ${dark ? "border-white/10 bg-[#182a23]" : "border-[#e1e9e1] bg-[#fbfdf9]"}`}><option value="sedentary">{t.snack === "وجبة خفيفة" ? "قليل" : "Sedentary"}</option><option value="light">{t.snack === "وجبة خفيفة" ? "خفيف" : "Light"}</option><option value="moderate">{t.snack === "وجبة خفيفة" ? "متوسط" : "Moderate"}</option><option value="high">{t.snack === "وجبة خفيفة" ? "عالٍ" : "High"}</option></select></label></div><button onClick={onSave} disabled={saving} className="mt-6 flex items-center gap-2 rounded-full bg-[#087b69] px-5 py-3 text-sm font-bold text-white disabled:opacity-50"><Save size={15} />{saving ? "..." : t.save}</button></section><button onClick={onLogout} className="mt-5 rounded-full border border-red-200 px-4 py-2 text-xs font-bold text-red-600">{t.logout}</button></>}</main>;
+}
+
+function NumberField({ label, value, onChange }: { label: string; value: number | null; onChange: (value: string) => void }) { return <label className="text-xs font-bold text-[#68776d]">{label}<input type="number" value={value ?? ""} onChange={(e) => onChange(e.target.value)} className="mt-2 h-11 w-full rounded-xl border border-[#e1e9e1] bg-[#fbfdf9] px-3 text-sm outline-none ring-[#70b99a] focus:ring-2" /></label>; }
