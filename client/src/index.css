@@ -52,6 +52,31 @@
     background: linear-gradient(135deg, oklch(0.45 0.12 160) 0%, oklch(0.35 0.1 170) 100%);
   }
 
+  .zadak-home-hero {
+    background: linear-gradient(118deg, #075c4d 0%, #087b69 47%, #0b6e61 100%);
+  }
+
+  .zadak-reveal {
+    animation: zadak-card-in 500ms cubic-bezier(.23, 1, .32, 1) both;
+  }
+
+  .zadak-reveal:nth-child(2) { animation-delay: 60ms; }
+  .zadak-reveal:nth-child(3) { animation-delay: 120ms; }
+  .zadak-reveal:nth-child(4) { animation-delay: 180ms; }
+
+  .zadak-hero-preview {
+    animation: zadak-hero-float 5s ease-in-out 500ms infinite;
+  }
+
+  .zadak-feature-strip {
+    animation: zadak-card-in 500ms cubic-bezier(.23, 1, .32, 1) 160ms both;
+  }
+
+  @keyframes zadak-hero-float {
+    0%, 100% { transform: translateY(0) rotate(0deg); }
+    50% { transform: translateY(-7px) rotate(.4deg); }
+  }
+
   @keyframes zadak-fade-in {
     from { opacity: 0; }
     to { opacity: 1; }
@@ -104,7 +129,7 @@
   }
 
   @media (prefers-reduced-motion: reduce) {
-    .zadak-modal-backdrop, .zadak-modal-panel, .zadak-meal-card { animation: none; }
+    .zadak-modal-backdrop, .zadak-modal-panel, .zadak-meal-card, .zadak-reveal, .zadak-feature-strip, .zadak-hero-preview { animation: none; }
     .zadak-meal-card, .zadak-meal-empty, .zadak-meal-icon { transition: none; }
   }
 }
