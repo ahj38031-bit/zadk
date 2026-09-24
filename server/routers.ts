@@ -22,9 +22,29 @@ const analysisSchema = {
     fat: { type: "integer", minimum: 0 },
     confidence: { type: "integer", minimum: 0, maximum: 100 },
     summary: { type: "string", description: "One concise explanation in Arabic" },
-    items: { type: "array", items: { type: "string" } },
+    items: { type: "array", items: { type: "string" }, description: "Short list of detected foods" },
+    ingredients: {
+      type: "array",
+      description: "Every visually identifiable ingredient with portion and nutrition estimate",
+      items: {
+        type: "object",
+        properties: {
+          name: { type: "string" },
+          portion: { type: "string", description: "Human-readable estimated portion" },
+          grams: { type: "integer", minimum: 0 },
+          calories: { type: "integer", minimum: 0 },
+          protein: { type: "integer", minimum: 0 },
+          carbs: { type: "integer", minimum: 0 },
+          fat: { type: "integer", minimum: 0 },
+          confidence: { type: "integer", minimum: 0, maximum: 100 },
+        },
+        required: ["name", "portion", "grams", "calories", "protein", "carbs", "fat", "confidence"],
+        additionalProperties: false,
+      },
+    },
+    assumptions: { type: "array", items: { type: "string" }, description: "Important assumptions or ambiguities" },
   },
-  required: ["mealName", "mealType", "calories", "protein", "carbs", "fat", "confidence", "summary", "items"],
+  required: ["mealName", "mealType", "calories", "protein", "carbs", "fat", "confidence", "summary", "items", "ingredients", "assumptions"],
   additionalProperties: false,
 } as const;
 
@@ -83,11 +103,11 @@ export const appRouter = router({
     }).refine((value) => Boolean(value.description || value.imageData), { message: "أضف وصفاً أو صورة للوجبة" })).mutation(async ({ ctx, input }) => {
       let imageUrl: string | undefined;
       let imageKey: string | undefined;
-      let imagePart: { type: "image_url"; image_url: { url: string; detail: "auto" } } | undefined;
+      let imagePart: { type: "image_url"; image_url: { url: string; detail: "high" } } | undefined;
 
       if (input.imageData) {
         const decoded = decodeImageData(input.imageData);
-        imagePart = { type: "image_url", image_url: { url: input.imageData, detail: "auto" } };
+        imagePart = { type: "image_url", image_url: { url: input.imageData, detail: "high" } };
         try {
           const stored = await storagePut(`${ctx.user.id}-meals/meal.${decoded.mime.split("/")[1]}`, decoded.buffer, decoded.mime);
           imageKey = stored.key;
@@ -98,21 +118,28 @@ export const appRouter = router({
       }
 
       const prompt = [
-        "حلّل الوجبة التالية كمساعد تغذية دقيق. أعد JSON فقط مطابقاً للمخطط.",
-        "استخدم تقديرات معقولة للحصة الظاهرة أو الموصوفة، وكن واضحاً أن القيم تقديرية.",
-        "اللغة العربية في mealName وsummary وitems. لا تقدم نصائح طبية أو تشخيصاً.",
-        input.description ? `وصف المستخدم: ${input.description}` : "حلّل الصورة المرفقة.",
+        "حلّل هذه الوجبة كخبير رؤية غذائية. أعد JSON فقط مطابقاً للمخطط، ولا تكتب Markdown.",
+        "الهدف هو أفضل تقدير عملي للسعرات والماكروز، وليس مجرد تسمية الطبق.",
+        "افحص الصورة منهجياً: حدّد كل عنصر ظاهر، طريقة الطهي، الصلصات والزيوت والإضافات المحتملة، ثم قدّر حجم الحصة باستخدام حجم الطبق والأدوات والمقارنة البصرية.",
+        "قسّم الوجبة إلى ingredients منفصلة. لكل عنصر اذكر اسماً عربياً، حصة بشرية مفهومة، غرامات تقريبية، سعرات وبروتين وكربوهيدرات ودهون وثقة مستقلة.",
+        "اجعل مجموع العناصر قريباً جداً من إجمالي الوجبة. تحقق أن السعرات منطقية مع الماكروز (4*البروتين + 4*الكربوهيدرات + 9*الدهون)، مع السماح باختلاف بسيط بسبب الألياف والماء.",
+        "إذا لم تستطع تمييز عنصر، لا تخترع اسماً؛ استخدم وصفاً عاماً مثل مكوّن غير واضح، وخفّض confidence وأضف السبب في assumptions.",
+        "إذا كانت كمية الزيت أو الصلصة غير ظاهرة، قدّرها بحذر وأذكرها في assumptions. لا تفترض أن الطبق منزوع الزيت.",
+        "استخدم نطاقاً محافظاً للحصة الظاهرة، وعبّر عن عدم اليقين في confidence وassumptions. لا تقدم نصائح طبية أو تشخيصاً.",
+        "اللغة العربية في mealName وsummary وitems وingredients.name وingredients.portion وassumptions.",
+        input.description ? `وصف المستخدم (استخدمه لتصحيح الصورة): ${input.description}` : "حلّل الصورة المرفقة فقط.",
       ].join("\n");
       const content = imagePart ? [{ type: "text" as const, text: prompt }, imagePart] : prompt;
       let response;
       try {
         response = await invokeLLM({
-          model: "gemini-3-flash-preview",
+          model: "gemini-3.1-pro-preview",
           messages: [
             { role: "system", content: "أنت خبير تغذية تطبق تقديرات غذائية عملية. أعد JSON صالحاً فقط." },
             { role: "user", content },
           ],
-          maxTokens: 1200,
+          thinking: { budget_tokens: 1024 },
+          maxTokens: 1800,
           responseFormat: { type: "json_schema", json_schema: { name: "meal_analysis", strict: true, schema: analysisSchema } },
         });
       } catch (error) {
@@ -131,18 +158,23 @@ export const appRouter = router({
         confidence: number;
         summary: string;
         items: string[];
+        ingredients: Array<{ name: string; portion: string; grams: number; calories: number; protein: number; carbs: number; fat: number; confidence: number }>;
+        assumptions: string[];
       };
       let parsed: MealAnalysis;
       try {
         parsed = z.object({
-          mealName: z.string(), mealType: z.enum(["breakfast", "lunch", "dinner", "snack"] as const), calories: z.number().int().nonnegative(), protein: z.number().int().nonnegative(), carbs: z.number().int().nonnegative(), fat: z.number().int().nonnegative(), confidence: z.number().int().min(0).max(100), summary: z.string(), items: z.array(z.string()),
+          mealName: z.string(), mealType: z.enum(["breakfast", "lunch", "dinner", "snack"] as const), calories: z.number().int().nonnegative(), protein: z.number().int().nonnegative(), carbs: z.number().int().nonnegative(), fat: z.number().int().nonnegative(), confidence: z.number().int().min(0).max(100), summary: z.string(), items: z.array(z.string()), ingredients: z.array(z.object({ name: z.string(), portion: z.string(), grams: z.number().int().nonnegative(), calories: z.number().int().nonnegative(), protein: z.number().int().nonnegative(), carbs: z.number().int().nonnegative(), fat: z.number().int().nonnegative(), confidence: z.number().int().min(0).max(100) })), assumptions: z.array(z.string()),
         }).parse(JSON.parse(raw));
       } catch {
         throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "وصلت نتيجة غير مكتملة من محلل الوجبات." });
       }
 
-      const meal = await createMeal({ userId: ctx.user.id, mealName: parsed.mealName.slice(0, 180), description: input.description ?? null, mealType: parsed.mealType, calories: parsed.calories, protein: parsed.protein, carbs: parsed.carbs, fat: parsed.fat, confidence: parsed.confidence, aiSummary: JSON.stringify({ summary: parsed.summary, items: parsed.items }), imageKey, imageUrl });
-      return { meal, analysis: parsed };
+      const ingredientCalories = parsed.ingredients.reduce((sum, ingredient) => sum + ingredient.calories, 0);
+      const calorieMismatch = parsed.calories > 0 ? Math.abs(ingredientCalories - parsed.calories) / parsed.calories : 0;
+      const adjustedConfidence = calorieMismatch > 0.35 ? Math.max(25, parsed.confidence - 15) : parsed.confidence;
+      const meal = await createMeal({ userId: ctx.user.id, mealName: parsed.mealName.slice(0, 180), description: input.description ?? null, mealType: parsed.mealType, calories: parsed.calories, protein: parsed.protein, carbs: parsed.carbs, fat: parsed.fat, confidence: adjustedConfidence, aiSummary: JSON.stringify({ summary: parsed.summary, items: parsed.items, ingredients: parsed.ingredients, assumptions: parsed.assumptions, calorieMismatch }), imageKey, imageUrl });
+      return { meal, analysis: { ...parsed, confidence: adjustedConfidence, calorieMismatch } };
     }),
   }),
 });
