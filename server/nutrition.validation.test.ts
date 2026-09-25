@@ -4,7 +4,7 @@ import type { TrpcContext } from "./_core/context";
 import { calculateNutritionGoals } from "./nutrition";
 import { getProgressMotivationStatus } from "../shared/progress";
 import { buildNutritionComparison } from "../shared/nutrition-chart";
-import { filterHistoryMeals } from "../shared/history-filters";
+import { filterHistoryMeals, sortHistoryMeals } from "../shared/history-filters";
 
 type AuthenticatedUser = NonNullable<TrpcContext["user"]>;
 
@@ -139,5 +139,15 @@ describe("nutrition input validation", () => {
     expect(filterHistoryMeals(meals, "all", "under400")).toHaveLength(1);
     expect(filterHistoryMeals(meals, "lunch", "all")).toEqual([{ mealType: "lunch", calories: 560 }]);
     expect(filterHistoryMeals(meals, "all", "over700")).toEqual([{ mealType: "dinner", calories: 820 }]);
+  });
+
+  it("sorts history by newest or highest calorie total without mutating the source", () => {
+    const meals = [
+      { mealType: "lunch", calories: 560, createdAt: new Date("2026-09-24T12:00:00Z") },
+      { mealType: "breakfast", calories: 820, createdAt: new Date("2026-09-25T08:00:00Z") },
+    ];
+    expect(sortHistoryMeals(meals, "latest").map((meal) => meal.mealType)).toEqual(["breakfast", "lunch"]);
+    expect(sortHistoryMeals(meals, "caloriesDesc").map((meal) => meal.calories)).toEqual([820, 560]);
+    expect(meals[0]?.mealType).toBe("lunch");
   });
 });
