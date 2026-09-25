@@ -77,6 +77,7 @@ export const appRouter = router({
       heightCm: z.number().int().min(80).max(250),
       weightKg: z.number().int().min(20).max(400),
       activityLevel: z.enum(["sedentary", "light", "moderate", "high"]),
+      goal: z.enum(["lose", "maintain", "gain"]),
     })).query(({ input }) => calculateNutritionGoals(input)),
     saveProfile: protectedProcedure.input(z.object({
       calorieGoal: z.number().int().min(800).max(10000),
@@ -87,9 +88,10 @@ export const appRouter = router({
       heightCm: z.number().int().min(80).max(250).nullable().optional(),
       weightKg: z.number().int().min(20).max(400).nullable().optional(),
       activityLevel: z.enum(["sedentary", "light", "moderate", "high"]),
+      goal: z.enum(["lose", "maintain", "gain"]).default("maintain"),
     })).mutation(({ ctx, input }) => {
       const goals = input.age && input.heightCm && input.weightKg
-        ? calculateNutritionGoals({ age: input.age, heightCm: input.heightCm, weightKg: input.weightKg, activityLevel: input.activityLevel })
+        ? calculateNutritionGoals({ age: input.age, heightCm: input.heightCm, weightKg: input.weightKg, activityLevel: input.activityLevel, goal: input.goal })
         : null;
       const { bmr: _bmr, activityMultiplier: _activityMultiplier, ...calculatedGoals } = goals ?? {};
       return updateProfile(ctx.user.id, { ...input, ...(goals ? calculatedGoals : {}) });

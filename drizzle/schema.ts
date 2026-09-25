@@ -23,6 +23,7 @@ export const profiles = mysqlTable("profiles", {
   heightCm: int("heightCm"),
   weightKg: int("weightKg"),
   activityLevel: mysqlEnum("activityLevel", ["sedentary", "light", "moderate", "high"]).default("moderate").notNull(),
+  goal: mysqlEnum("goal", ["lose", "maintain", "gain"]).default("maintain").notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
 

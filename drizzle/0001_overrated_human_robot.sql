@@ -1,0 +1,1 @@
+ALTER TABLE `profiles` ADD `goal` enum('lose','maintain','gain') DEFAULT 'maintain' NOT NULL;

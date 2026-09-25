@@ -27,7 +27,7 @@ function createContext(): TrpcContext {
 
 describe("nutrition input validation", () => {
   it("calculates maintenance calories and balanced macros from body data", () => {
-    const result = calculateNutritionGoals({ age: 30, heightCm: 170, weightKg: 70, activityLevel: "moderate" });
+    const result = calculateNutritionGoals({ age: 30, heightCm: 170, weightKg: 70, activityLevel: "moderate", goal: "maintain" });
     expect(result.bmr).toBe(1535);
     expect(result.calorieGoal).toBe(2380);
     expect(result.proteinGoal).toBe(149);
@@ -36,10 +36,20 @@ describe("nutrition input validation", () => {
   });
 
   it("uses a higher calorie target for higher activity", () => {
-    const sedentary = calculateNutritionGoals({ age: 30, heightCm: 170, weightKg: 70, activityLevel: "sedentary" });
-    const active = calculateNutritionGoals({ age: 30, heightCm: 170, weightKg: 70, activityLevel: "high" });
+    const sedentary = calculateNutritionGoals({ age: 30, heightCm: 170, weightKg: 70, activityLevel: "sedentary", goal: "maintain" });
+    const active = calculateNutritionGoals({ age: 30, heightCm: 170, weightKg: 70, activityLevel: "high", goal: "maintain" });
     expect(active.calorieGoal).toBeGreaterThan(sedentary.calorieGoal);
     expect(active.activityMultiplier).toBe(1.725);
+  });
+
+  it("adjusts calories and macros according to the selected goal", () => {
+    const lose = calculateNutritionGoals({ age: 30, heightCm: 170, weightKg: 70, activityLevel: "moderate", goal: "lose" });
+    const maintain = calculateNutritionGoals({ age: 30, heightCm: 170, weightKg: 70, activityLevel: "moderate", goal: "maintain" });
+    const gain = calculateNutritionGoals({ age: 30, heightCm: 170, weightKg: 70, activityLevel: "moderate", goal: "gain" });
+    expect(lose.calorieGoal).toBeLessThan(maintain.calorieGoal);
+    expect(gain.calorieGoal).toBeGreaterThan(maintain.calorieGoal);
+    expect(lose.proteinGoal).toBeGreaterThan(maintain.proteinGoal);
+    expect(gain.carbsGoal).toBeGreaterThan(maintain.carbsGoal);
   });
 
   it("requires a meal description or image", async () => {
