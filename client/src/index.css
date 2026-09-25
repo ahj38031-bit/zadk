@@ -145,4 +145,88 @@
     .zadak-modal-backdrop, .zadak-modal-panel, .zadak-meal-card, .zadak-reveal, .zadak-feature-strip, .zadak-hero-preview, .zadak-motivation, .zadak-ai-suggestion { animation: none; }
     .zadak-meal-card, .zadak-meal-empty, .zadak-meal-icon { transition: none; }
   }
+
+  .zadak-app-shell {
+    background-image: radial-gradient(circle at 8% 0%, rgba(161, 211, 161, .16), transparent 27rem), radial-gradient(circle at 96% 22%, rgba(240, 197, 111, .10), transparent 24rem);
+  }
+
+  .zadak-header {
+    box-shadow: 0 10px 30px rgba(35, 67, 51, .035);
+  }
+
+  .zadak-nav-item {
+    position: relative;
+  }
+
+  .zadak-nav-item::after {
+    content: "";
+    position: absolute;
+    right: 1rem;
+    left: 1rem;
+    bottom: .2rem;
+    height: 2px;
+    border-radius: 999px;
+    background: #78c797;
+    transform: scaleX(0);
+    transform-origin: center;
+    transition: transform 180ms cubic-bezier(.23, 1, .32, 1);
+  }
+
+  .zadak-nav-item:hover::after,
+  .zadak-nav-item[aria-current="page"]::after {
+    transform: scaleX(1);
+  }
+
+  .zadak-primary-button,
+  .zadak-hero-secondary,
+  .zadak-feature-card,
+  button,
+  select,
+  input {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .zadak-primary-button {
+    transition: transform 180ms cubic-bezier(.23, 1, .32, 1), box-shadow 180ms ease, background-color 180ms ease;
+  }
+
+  .zadak-primary-button:hover {
+    box-shadow: 0 16px 30px rgba(5, 93, 72, .22);
+  }
+
+  .zadak-hero-secondary {
+    transition: transform 180ms cubic-bezier(.23, 1, .32, 1), background-color 180ms ease, border-color 180ms ease;
+  }
+
+  .zadak-hero-secondary:hover {
+    border-color: rgba(255, 255, 255, .45);
+    background-color: rgba(255, 255, 255, .14);
+    transform: translateY(-2px);
+  }
+
+  .zadak-feature-card {
+    position: relative;
+    transition: transform 180ms cubic-bezier(.23, 1, .32, 1), background-color 180ms ease, box-shadow 180ms ease;
+  }
+
+  .zadak-feature-card:hover {
+    z-index: 1;
+    transform: translateY(-2px);
+    box-shadow: 0 14px 28px rgba(35, 67, 51, .08);
+  }
+
+  button:focus-visible,
+  select:focus-visible,
+  input:focus-visible,
+  textarea:focus-visible {
+    outline: 3px solid rgba(212, 156, 62, .48);
+    outline-offset: 3px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .zadak-nav-item::after,
+    .zadak-primary-button,
+    .zadak-hero-secondary,
+    .zadak-feature-card { transition: none; }
+  }
 }
