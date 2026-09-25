@@ -4,6 +4,7 @@ import type { TrpcContext } from "./_core/context";
 import { calculateNutritionGoals } from "./nutrition";
 import { getProgressMotivationStatus } from "../shared/progress";
 import { buildNutritionComparison } from "../shared/nutrition-chart";
+import { filterHistoryMeals } from "../shared/history-filters";
 
 type AuthenticatedUser = NonNullable<TrpcContext["user"]>;
 
@@ -127,5 +128,16 @@ describe("nutrition input validation", () => {
     expect(result).toHaveLength(3);
     expect(result[1]).toMatchObject({ calories: 1050, weight: 80 });
     expect(result[2]).toMatchObject({ calories: 0, weight: 80 });
+  });
+
+  it("filters history by meal type and calorie range", () => {
+    const meals = [
+      { mealType: "breakfast", calories: 320 },
+      { mealType: "lunch", calories: 560 },
+      { mealType: "dinner", calories: 820 },
+    ];
+    expect(filterHistoryMeals(meals, "all", "under400")).toHaveLength(1);
+    expect(filterHistoryMeals(meals, "lunch", "all")).toEqual([{ mealType: "lunch", calories: 560 }]);
+    expect(filterHistoryMeals(meals, "all", "over700")).toEqual([{ mealType: "dinner", calories: 820 }]);
   });
 });
