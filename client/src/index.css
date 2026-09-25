@@ -137,8 +137,12 @@
     animation: zadak-motivation-in 260ms cubic-bezier(.23, 1, .32, 1) both;
   }
 
+  .zadak-ai-suggestion {
+    animation: zadak-motivation-in 300ms cubic-bezier(.23, 1, .32, 1) both;
+  }
+
   @media (prefers-reduced-motion: reduce) {
-    .zadak-modal-backdrop, .zadak-modal-panel, .zadak-meal-card, .zadak-reveal, .zadak-feature-strip, .zadak-hero-preview, .zadak-motivation { animation: none; }
+    .zadak-modal-backdrop, .zadak-modal-panel, .zadak-meal-card, .zadak-reveal, .zadak-feature-strip, .zadak-hero-preview, .zadak-motivation, .zadak-ai-suggestion { animation: none; }
     .zadak-meal-card, .zadak-meal-empty, .zadak-meal-icon { transition: none; }
   }
 }

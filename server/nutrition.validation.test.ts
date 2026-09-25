@@ -100,4 +100,18 @@ describe("nutrition input validation", () => {
     expect(getProgressMotivationStatus(70, -1)).toBe("overdue");
     expect(getProgressMotivationStatus(10, 60)).toBe("start");
   });
+
+  it("does not request an AI calorie change when the timeline is healthy", async () => {
+    const caller = appRouter.createCaller(createContext());
+    await expect(caller.nutrition.suggestCalorieAdjustment({
+      currentCalories: 2200,
+      progressPercent: 65,
+      daysRemaining: 30,
+      goal: "lose",
+      adjustmentDirection: "lower",
+      currentWeightKg: 78,
+      targetWeightKg: 70,
+      language: "ar",
+    })).rejects.toMatchObject({ code: "BAD_REQUEST" });
+  });
 });

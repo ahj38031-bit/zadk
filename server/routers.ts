@@ -79,6 +79,59 @@ export const appRouter = router({
       activityLevel: z.enum(["sedentary", "light", "moderate", "high"]),
       goal: z.enum(["lose", "maintain", "gain"]),
     })).query(({ input }) => calculateNutritionGoals(input)),
+    suggestCalorieAdjustment: protectedProcedure.input(z.object({
+      currentCalories: z.number().int().min(1200).max(10000),
+      progressPercent: z.number().int().min(0).max(100),
+      daysRemaining: z.number().int().min(-3650).max(3650).nullable(),
+      goal: z.enum(["lose", "maintain", "gain"]),
+      adjustmentDirection: z.enum(["lower", "higher"]),
+      currentWeightKg: z.number().int().min(20).max(400),
+      targetWeightKg: z.number().int().min(20).max(400),
+      language: z.enum(["ar", "en", "tr"]).default("ar"),
+    })).mutation(async ({ input }) => {
+      const isBehind = input.daysRemaining != null && input.daysRemaining <= 30 && input.progressPercent < (input.daysRemaining <= 7 ? 80 : 50);
+      if (!isBehind) throw new TRPCError({ code: "BAD_REQUEST", message: "لا حاجة لتعديل السعرات حالياً." });
+
+      const languageName = input.language === "en" ? "English" : input.language === "tr" ? "Turkish" : "Arabic";
+      const directionText = input.adjustmentDirection === "lower" ? "خفض السعرات" : "رفع السعرات";
+      const suggestionSchema = {
+        type: "object",
+        properties: {
+          suggestedCalories: { type: "integer", minimum: 1200, maximum: 10000 },
+          reason: { type: "string", description: "Short, practical explanation in the requested language" },
+          focus: { type: "string", description: "One small habit to pair with the adjustment in the requested language" },
+        },
+        required: ["suggestedCalories", "reason", "focus"],
+        additionalProperties: false,
+      };
+      let response;
+      try {
+        response = await invokeLLM({
+          model: "gemini-3.1-pro-preview",
+          messages: [
+            { role: "system", content: `أنت مساعد تغذية حذر. أعد JSON فقط باللغة ${languageName}. لا تقدم تشخيصاً أو نصيحة طبية. اقترح تعديلاً صغيراً لا يتجاوز 10% من السعرات الحالية، ولا تنزل أبداً عن 1200 سعرة. اجعل السبب عملياً ومشجعاً.` },
+            { role: "user", content: `المستخدم أبطأ من جدوله الزمني. السعرات الحالية: ${input.currentCalories}. التقدم: ${input.progressPercent}%. الأيام المتبقية: ${input.daysRemaining}. الهدف: ${input.goal}. الوزن الحالي: ${input.currentWeightKg} كغ، المستهدف: ${input.targetWeightKg} كغ. المطلوب: ${directionText}. اقترح سعراً يومياً جديداً ضمن تعديل صغير، واذكر سبباً وعادة واحدة مساعدة.` },
+          ],
+          thinking: { budget_tokens: 512 },
+          maxTokens: 500,
+          responseFormat: { type: "json_schema", json_schema: { name: "calorie_adjustment", strict: true, schema: suggestionSchema } },
+        });
+      } catch (error) {
+        console.error("[Nutrition] Calorie suggestion failed:", error);
+        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "تعذر إنشاء الاقتراح الآن. حاول مرة أخرى." });
+      }
+
+      try {
+        const parsed = z.object({ suggestedCalories: z.number().int().min(1200).max(10000), reason: z.string().min(1).max(500), focus: z.string().min(1).max(300) }).parse(JSON.parse(getTextContent(response.choices?.[0]?.message?.content)));
+        const maxDelta = Math.max(50, Math.round(input.currentCalories * 0.1));
+        const lowerBound = input.adjustmentDirection === "lower" ? Math.max(1200, input.currentCalories - maxDelta) : input.currentCalories;
+        const upperBound = input.adjustmentDirection === "higher" ? input.currentCalories + maxDelta : input.currentCalories;
+        const suggestedCalories = Math.min(upperBound, Math.max(lowerBound, parsed.suggestedCalories));
+        return { suggestedCalories, change: suggestedCalories - input.currentCalories, reason: parsed.reason, focus: parsed.focus, safetyNote: input.language === "en" ? "Review this suggestion before applying it." : input.language === "tr" ? "Uygulamadan önce bu öneriyi gözden geçirin." : "راجع الاقتراح قبل تطبيقه." };
+      } catch {
+        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "وصل اقتراح غير مكتمل من المساعد الذكي." });
+      }
+    }),
     saveProfile: protectedProcedure.input(z.object({
       calorieGoal: z.number().int().min(800).max(10000),
       proteinGoal: z.number().int().min(10).max(500),
@@ -91,12 +144,14 @@ export const appRouter = router({
       targetDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().optional(),
       activityLevel: z.enum(["sedentary", "light", "moderate", "high"]),
       goal: z.enum(["lose", "maintain", "gain"]).default("maintain"),
+      useAiCalorieAdjustment: z.boolean().optional(),
     })).mutation(({ ctx, input }) => {
       const goals = input.age && input.heightCm && input.weightKg
         ? calculateNutritionGoals({ age: input.age, heightCm: input.heightCm, weightKg: input.weightKg, activityLevel: input.activityLevel, goal: input.goal })
         : null;
       const { bmr: _bmr, activityMultiplier: _activityMultiplier, ...calculatedGoals } = goals ?? {};
-      return updateProfile(ctx.user.id, { ...input, ...(goals ? calculatedGoals : {}) });
+      const { useAiCalorieAdjustment, ...profileInput } = input;
+      return updateProfile(ctx.user.id, { ...profileInput, ...(goals && !useAiCalorieAdjustment ? calculatedGoals : {}) });
     }),
     deleteMeal: protectedProcedure.input(z.object({ id: z.number().int().positive() })).mutation(({ ctx, input }) => deleteMeal(ctx.user.id, input.id)),
     clearToday: protectedProcedure.mutation(({ ctx }) => clearTodayMeals(ctx.user.id)),
