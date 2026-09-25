@@ -1,6 +1,6 @@
 import { and, desc, eq, gte, lt } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { InsertUser, Meal, Profile, meals, profiles, users } from "../drizzle/schema";
+import { InsertUser, Meal, Profile, WeightLog, meals, profiles, users, weightLogs } from "../drizzle/schema";
 import { ENV } from "./_core/env";
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -99,8 +99,22 @@ export async function clearTodayMeals(userId: number) {
   return { success: true } as const;
 }
 
-export type DashboardData = { profile: Profile; meals: Meal[] };
+export async function recordWeightLog(userId: number, weightKg: number) {
+  const db = requireDb(await getDb());
+  await db.insert(weightLogs).values({ userId, weightKg });
+  return { success: true } as const;
+}
+
+export async function getWeightLogs(userId: number, limit = 90): Promise<WeightLog[]> {
+  const db = requireDb(await getDb());
+  return db.select().from(weightLogs).where(eq(weightLogs.userId, userId)).orderBy(desc(weightLogs.loggedAt)).limit(limit);
+}
+
+export type DashboardData = { profile: Profile; meals: Meal[]; weightLogs: WeightLog[] };
 
 export async function getDashboard(userId: number): Promise<DashboardData> {
-  return { profile: await getOrCreateProfile(userId), meals: await getMeals(userId) };
+  const profile = await getOrCreateProfile(userId);
+  const logs = await getWeightLogs(userId);
+  const weightLogs = logs.length || profile.weightKg == null ? logs : [{ id: 0, userId, weightKg: profile.weightKg, loggedAt: profile.updatedAt }];
+  return { profile, meals: await getMeals(userId), weightLogs };
 }

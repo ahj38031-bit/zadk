@@ -3,6 +3,7 @@ import { appRouter } from "./routers";
 import type { TrpcContext } from "./_core/context";
 import { calculateNutritionGoals } from "./nutrition";
 import { getProgressMotivationStatus } from "../shared/progress";
+import { buildNutritionComparison } from "../shared/nutrition-chart";
 
 type AuthenticatedUser = NonNullable<TrpcContext["user"]>;
 
@@ -113,5 +114,18 @@ describe("nutrition input validation", () => {
       targetWeightKg: 70,
       language: "ar",
     })).rejects.toMatchObject({ code: "BAD_REQUEST" });
+  });
+
+  it("builds daily calorie totals and carries the latest actual weight forward", () => {
+    const now = new Date(2026, 8, 25, 12);
+    const result = buildNutritionComparison(
+      [{ calories: 600, createdAt: new Date(2026, 8, 24, 10) }, { calories: 450, createdAt: new Date(2026, 8, 24, 18) }],
+      [{ weightKg: 80, loggedAt: new Date(2026, 8, 24, 8) }],
+      3,
+      now,
+    );
+    expect(result).toHaveLength(3);
+    expect(result[1]).toMatchObject({ calories: 1050, weight: 80 });
+    expect(result[2]).toMatchObject({ calories: 0, weight: 80 });
   });
 });

@@ -4,7 +4,7 @@ import { getSessionCookieOptions } from "./_core/cookies";
 import { invokeLLM } from "./_core/llm";
 import { systemRouter } from "./_core/systemRouter";
 import { protectedProcedure, publicProcedure, router } from "./_core/trpc";
-import { clearTodayMeals, createMeal, deleteMeal, getDashboard, updateProfile } from "./db";
+import { clearTodayMeals, createMeal, deleteMeal, getDashboard, recordWeightLog, updateProfile } from "./db";
 import { storagePut } from "./storage";
 import { TRPCError } from "@trpc/server";
 import { calculateNutritionGoals } from "./nutrition";
@@ -145,13 +145,15 @@ export const appRouter = router({
       activityLevel: z.enum(["sedentary", "light", "moderate", "high"]),
       goal: z.enum(["lose", "maintain", "gain"]).default("maintain"),
       useAiCalorieAdjustment: z.boolean().optional(),
-    })).mutation(({ ctx, input }) => {
+    })).mutation(async ({ ctx, input }) => {
       const goals = input.age && input.heightCm && input.weightKg
         ? calculateNutritionGoals({ age: input.age, heightCm: input.heightCm, weightKg: input.weightKg, activityLevel: input.activityLevel, goal: input.goal })
         : null;
       const { bmr: _bmr, activityMultiplier: _activityMultiplier, ...calculatedGoals } = goals ?? {};
       const { useAiCalorieAdjustment, ...profileInput } = input;
-      return updateProfile(ctx.user.id, { ...profileInput, ...(goals && !useAiCalorieAdjustment ? calculatedGoals : {}) });
+      const updated = await updateProfile(ctx.user.id, { ...profileInput, ...(goals && !useAiCalorieAdjustment ? calculatedGoals : {}) });
+      if (input.weightKg != null) await recordWeightLog(ctx.user.id, input.weightKg);
+      return updated;
     }),
     deleteMeal: protectedProcedure.input(z.object({ id: z.number().int().positive() })).mutation(({ ctx, input }) => deleteMeal(ctx.user.id, input.id)),
     clearToday: protectedProcedure.mutation(({ ctx }) => clearTodayMeals(ctx.user.id)),

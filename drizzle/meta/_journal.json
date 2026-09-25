@@ -22,6 +22,13 @@
       "when": 1790355584380,
       "tag": "0002_steep_starbolt",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "5",
+      "when": 1790357104183,
+      "tag": "0003_wise_zeigeist",
+      "breakpoints": true
     }
   ]
 }

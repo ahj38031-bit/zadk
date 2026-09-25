@@ -47,7 +47,15 @@ export const meals = mysqlTable("meals", {
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 
+export const weightLogs = mysqlTable("weightLogs", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  weightKg: int("weightKg").notNull(),
+  loggedAt: timestamp("loggedAt").defaultNow().notNull(),
+});
+
 export type User = typeof users.$inferSelect;
 export type InsertUser = typeof users.$inferInsert;
 export type Profile = typeof profiles.$inferSelect;
 export type Meal = typeof meals.$inferSelect;
+export type WeightLog = typeof weightLogs.$inferSelect;
