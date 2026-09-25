@@ -128,8 +128,17 @@
     transition: transform 220ms cubic-bezier(.23, 1, .32, 1), background-color 220ms ease;
   }
 
+  @keyframes zadak-motivation-in {
+    from { opacity: 0; transform: translateY(3px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .zadak-motivation {
+    animation: zadak-motivation-in 260ms cubic-bezier(.23, 1, .32, 1) both;
+  }
+
   @media (prefers-reduced-motion: reduce) {
-    .zadak-modal-backdrop, .zadak-modal-panel, .zadak-meal-card, .zadak-reveal, .zadak-feature-strip, .zadak-hero-preview { animation: none; }
+    .zadak-modal-backdrop, .zadak-modal-panel, .zadak-meal-card, .zadak-reveal, .zadak-feature-strip, .zadak-hero-preview, .zadak-motivation { animation: none; }
     .zadak-meal-card, .zadak-meal-empty, .zadak-meal-icon { transition: none; }
   }
 }

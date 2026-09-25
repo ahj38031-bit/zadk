@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { appRouter } from "./routers";
 import type { TrpcContext } from "./_core/context";
 import { calculateNutritionGoals } from "./nutrition";
+import { getProgressMotivationStatus } from "../shared/progress";
 
 type AuthenticatedUser = NonNullable<TrpcContext["user"]>;
 
@@ -89,5 +90,14 @@ describe("nutrition input validation", () => {
       targetWeightKg: 65,
       targetDate: "25/09/2026",
     })).rejects.toMatchObject({ code: "BAD_REQUEST" });
+  });
+
+  it("selects motivation based on progress and timeline", () => {
+    expect(getProgressMotivationStatus(100, 20)).toBe("reached");
+    expect(getProgressMotivationStatus(40, 30)).toBe("onTrack");
+    expect(getProgressMotivationStatus(85, 30)).toBe("ahead");
+    expect(getProgressMotivationStatus(45, 5)).toBe("deadline");
+    expect(getProgressMotivationStatus(70, -1)).toBe("overdue");
+    expect(getProgressMotivationStatus(10, 60)).toBe("start");
   });
 });
