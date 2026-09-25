@@ -1,4 +1,4 @@
-import { int, mysqlEnum, mysqlTable, text, timestamp, varchar } from "drizzle-orm/mysql-core";
+import { date, int, mysqlEnum, mysqlTable, text, timestamp, varchar } from "drizzle-orm/mysql-core";
 
 export const users = mysqlTable("users", {
   id: int("id").autoincrement().primaryKey(),
@@ -22,6 +22,9 @@ export const profiles = mysqlTable("profiles", {
   age: int("age"),
   heightCm: int("heightCm"),
   weightKg: int("weightKg"),
+  startWeightKg: int("startWeightKg"),
+  targetWeightKg: int("targetWeightKg"),
+  targetDate: date("targetDate", { mode: "string" }),
   activityLevel: mysqlEnum("activityLevel", ["sedentary", "light", "moderate", "high"]).default("moderate").notNull(),
   goal: mysqlEnum("goal", ["lose", "maintain", "gain"]).default("maintain").notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),

@@ -87,6 +87,8 @@ export const appRouter = router({
       age: z.number().int().min(10).max(110).nullable().optional(),
       heightCm: z.number().int().min(80).max(250).nullable().optional(),
       weightKg: z.number().int().min(20).max(400).nullable().optional(),
+      targetWeightKg: z.number().int().min(20).max(400).nullable().optional(),
+      targetDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().optional(),
       activityLevel: z.enum(["sedentary", "light", "moderate", "high"]),
       goal: z.enum(["lose", "maintain", "gain"]).default("maintain"),
     })).mutation(({ ctx, input }) => {

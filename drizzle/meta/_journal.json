@@ -15,6 +15,13 @@
       "when": 1790277572537,
       "tag": "0001_overrated_human_robot",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "5",
+      "when": 1790355584380,
+      "tag": "0002_steep_starbolt",
+      "breakpoints": true
     }
   ]
 }

@@ -62,8 +62,12 @@ export async function getOrCreateProfile(userId: number): Promise<Profile> {
 
 export async function updateProfile(userId: number, data: Partial<Omit<Profile, "id" | "userId" | "updatedAt">>) {
   const db = requireDb(await getDb());
-  await getOrCreateProfile(userId);
-  await db.update(profiles).set({ ...data, updatedAt: new Date() }).where(eq(profiles.userId, userId));
+  const existing = await getOrCreateProfile(userId);
+  const nextData = { ...data };
+  if (data.targetWeightKg != null && existing.startWeightKg == null) {
+    nextData.startWeightKg = existing.weightKg ?? data.weightKg ?? null;
+  }
+  await db.update(profiles).set({ ...nextData, updatedAt: new Date() }).where(eq(profiles.userId, userId));
   return getOrCreateProfile(userId);
 }
 

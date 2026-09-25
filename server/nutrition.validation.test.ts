@@ -76,4 +76,18 @@ describe("nutrition input validation", () => {
       activityLevel: "moderate",
     })).rejects.toMatchObject({ code: "BAD_REQUEST" });
   });
+
+  it("rejects malformed target dates before touching the database", async () => {
+    const caller = appRouter.createCaller(createContext());
+    await expect(caller.nutrition.saveProfile({
+      calorieGoal: 2139,
+      proteinGoal: 98,
+      carbsGoal: 293,
+      fatGoal: 64,
+      activityLevel: "moderate",
+      goal: "lose",
+      targetWeightKg: 65,
+      targetDate: "25/09/2026",
+    })).rejects.toMatchObject({ code: "BAD_REQUEST" });
+  });
 });
