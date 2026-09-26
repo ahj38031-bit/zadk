@@ -423,4 +423,9 @@
     to { opacity: 1; transform: translateY(0) scale(1); }
   }
 
+
+  .zadak-notification-popover button[aria-label] {
+    -webkit-tap-highlight-color: transparent;
+  }
+
 }
