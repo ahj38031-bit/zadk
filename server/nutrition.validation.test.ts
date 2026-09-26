@@ -130,6 +130,12 @@ describe("nutrition input validation", () => {
     expect(result[2]).toMatchObject({ calories: 0, weight: 80 });
   });
 
+  it("supports a 30-day comparison range for the interactive chart", () => {
+    const result = buildNutritionComparison([], [], 30, new Date(2026, 8, 25, 12));
+    expect(result).toHaveLength(30);
+    expect(result[0]).toMatchObject({ calories: 0, weight: null });
+  });
+
   it("filters history by meal type and calorie range", () => {
     const meals = [
       { mealType: "breakfast", calories: 320 },
