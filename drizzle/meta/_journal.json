@@ -29,6 +29,13 @@
       "when": 1790357104183,
       "tag": "0003_wise_zeigeist",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "5",
+      "when": 1790450782188,
+      "tag": "0004_rare_daredevil",
+      "breakpoints": true
     }
   ]
 }

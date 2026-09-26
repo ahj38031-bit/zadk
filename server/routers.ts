@@ -155,6 +155,11 @@ export const appRouter = router({
       if (input.weightKg != null) await recordWeightLog(ctx.user.id, input.weightKg);
       return updated;
     }),
+    saveHistoryPreferences: protectedProcedure.input(z.object({
+      historyMealTypeFilter: z.enum(["all", "breakfast", "lunch", "dinner", "snack"]),
+      historyCalorieFilter: z.enum(["all", "under400", "400to700", "over700"]),
+      historySortOrder: z.enum(["latest", "caloriesDesc"]),
+    })).mutation(({ ctx, input }) => updateProfile(ctx.user.id, input)),
     deleteMeal: protectedProcedure.input(z.object({ id: z.number().int().positive() })).mutation(({ ctx, input }) => deleteMeal(ctx.user.id, input.id)),
     clearToday: protectedProcedure.mutation(({ ctx }) => clearTodayMeals(ctx.user.id)),
     analyzeMeal: protectedProcedure.input(z.object({

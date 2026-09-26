@@ -150,4 +150,13 @@ describe("nutrition input validation", () => {
     expect(sortHistoryMeals(meals, "caloriesDesc").map((meal) => meal.calories)).toEqual([820, 560]);
     expect(meals[0]?.mealType).toBe("lunch");
   });
+
+  it("validates history preference values before touching the database", async () => {
+    const caller = appRouter.createCaller(createContext());
+    await expect(caller.nutrition.saveHistoryPreferences({
+      historyMealTypeFilter: "brunch" as "all",
+      historyCalorieFilter: "all",
+      historySortOrder: "latest",
+    })).rejects.toMatchObject({ code: "BAD_REQUEST" });
+  });
 });

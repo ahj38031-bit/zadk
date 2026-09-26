@@ -27,6 +27,9 @@ export const profiles = mysqlTable("profiles", {
   targetDate: date("targetDate", { mode: "string" }),
   activityLevel: mysqlEnum("activityLevel", ["sedentary", "light", "moderate", "high"]).default("moderate").notNull(),
   goal: mysqlEnum("goal", ["lose", "maintain", "gain"]).default("maintain").notNull(),
+  historyMealTypeFilter: mysqlEnum("historyMealTypeFilter", ["all", "breakfast", "lunch", "dinner", "snack"]).default("all").notNull(),
+  historyCalorieFilter: mysqlEnum("historyCalorieFilter", ["all", "under400", "400to700", "over700"]).default("all").notNull(),
+  historySortOrder: mysqlEnum("historySortOrder", ["latest", "caloriesDesc"]).default("latest").notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
 
