@@ -394,4 +394,21 @@
     to { opacity: 1; transform: translateY(0) scale(1); }
   }
 
+
+  .toaster [data-sonner-toast] {
+    border-radius: 16px;
+    box-shadow: 0 14px 34px rgba(35, 67, 51, .14);
+    font-family: 'Inter', 'Noto Sans Arabic', sans-serif;
+    font-size: 12px;
+    font-weight: 700;
+  }
+
+  .toaster [data-sonner-toast][data-type="success"] {
+    border-color: rgba(22, 134, 111, .25);
+  }
+
+  .toaster [data-sonner-toast][data-type="error"] {
+    border-color: rgba(198, 91, 76, .25);
+  }
+
 }

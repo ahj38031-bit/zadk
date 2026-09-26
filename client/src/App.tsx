@@ -21,7 +21,7 @@ export default function App() {
     <ErrorBoundary>
       <ThemeProvider defaultTheme="light" switchable>
         <TooltipProvider>
-          <Toaster position="bottom-center" />
+          <Toaster position="bottom-center" richColors closeButton duration={3600} visibleToasts={4} />
           <Router />
         </TooltipProvider>
       </ThemeProvider>
