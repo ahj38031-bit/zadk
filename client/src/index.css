@@ -608,4 +608,15 @@
     .zadak-bottom-nav-icon { transition: none; }
   }
 
+
+  @media (max-width: 639px) {
+    .zadak-app-shell {
+      touch-action: pan-y;
+    }
+
+    .zadak-app-shell main {
+      overscroll-behavior-x: none;
+    }
+  }
+
 }
