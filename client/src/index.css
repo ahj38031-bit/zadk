@@ -644,4 +644,48 @@
     }
   }
 
+
+  .zadak-section-indicator {
+    display: none;
+  }
+
+  @media (max-width: 639px) {
+    .zadak-section-indicator {
+      position: fixed;
+      right: 50%;
+      bottom: calc(72px + env(safe-area-inset-bottom));
+      z-index: 44;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      min-height: 24px;
+      padding: 5px 9px;
+      border: 1px solid rgba(144, 178, 151, .22);
+      border-radius: 999px;
+      box-shadow: 0 7px 20px rgba(35, 67, 51, .11);
+      transform: translateX(50%);
+      backdrop-filter: blur(14px);
+    }
+
+    .zadak-section-dot {
+      display: block;
+      height: 5px;
+      width: 5px;
+      border-radius: 999px;
+      background: currentColor;
+      opacity: .42;
+      transition: width 180ms cubic-bezier(.23, 1, .32, 1), opacity 180ms ease, background-color 180ms ease;
+    }
+
+    .zadak-section-dot.is-active {
+      width: 16px;
+      opacity: 1;
+      background: #16866f;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .zadak-section-dot { transition: none; }
+  }
+
 }
