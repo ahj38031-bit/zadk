@@ -156,10 +156,10 @@ function MacroRow({ label, current, goal, color, unit }: { label: string; curren
   return <div className="mb-4 last:mb-0"><div className="mb-2 flex items-center justify-between text-[11px] font-medium text-[#6f756f]"><span>{label}</span><span dir="ltr" className="text-[10px] text-[#48514c]">{current} / {goal}{unit}</span></div><div className="h-[7px] overflow-hidden rounded-full bg-[#e9eeea]"><div className="h-full rounded-full transition-all duration-700" style={{ width: `${percent}%`, backgroundColor: color }} /></div></div>;
 }
 
-function MobileSectionIndicator({ view, t, dark, transitioning }: { view: View; t: Labels; dark: boolean; transitioning: boolean }) {
+function MobileSectionIndicator({ view, t, dark, transitioning, edgeBounce }: { view: View; t: Labels; dark: boolean; transitioning: boolean; edgeBounce: "start" | "end" | null }) {
   const currentIndex = Math.max(0, mobileSections.indexOf(view));
   const label = t.sectionIndicator.replace("{current}", String(currentIndex + 1)).replace("{total}", String(mobileSections.length));
-  return <div className={`zadak-section-indicator lg:hidden ${transitioning ? "is-transitioning" : ""} ${dark ? "bg-[#20312b]/95 text-[#b9d0c0]" : "bg-white/95 text-[#708077]"}`} aria-label={label}>
+  return <div className={`zadak-section-indicator lg:hidden ${transitioning ? "is-transitioning" : ""} ${edgeBounce ? `is-bouncing-${edgeBounce}` : ""} ${dark ? "bg-[#20312b]/95 text-[#b9d0c0]" : "bg-white/95 text-[#708077]"}`} aria-label={label}>
     <span aria-hidden="true" className="flex items-center gap-1.5">{mobileSections.map((section) => <span key={section} className={`zadak-section-dot ${section === view ? "is-active" : ""}`} />)}</span>
     <span dir="ltr" className="text-[9px] font-black tabular-nums">{currentIndex + 1}/{mobileSections.length}</span>
   </div>;
@@ -179,6 +179,7 @@ export default function Home() {
   const [language, setLanguage] = useState<Language>("ar");
   const [view, setView] = useState<View>("home");
   const [slideDirection, setSlideDirection] = useState<"next" | "prev" | null>(null);
+  const [edgeBounce, setEdgeBounce] = useState<"start" | "end" | null>(null);
   const [mobileMenu, setMobileMenu] = useState(false);
   const swipeStartRef = useRef<{ x: number; y: number } | null>(null);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
@@ -260,6 +261,11 @@ export default function Home() {
     const timer = window.setTimeout(() => setSlideDirection(null), 340);
     return () => window.clearTimeout(timer);
   }, [slideDirection]);
+  useEffect(() => {
+    if (!edgeBounce) return;
+    const timer = window.setTimeout(() => setEdgeBounce(null), 360);
+    return () => window.clearTimeout(timer);
+  }, [edgeBounce]);
 
   function handleTouchStart(event: React.TouchEvent<HTMLDivElement>) {
     if (typeof window === "undefined" || !window.matchMedia("(max-width: 639px)").matches || mealModal || privacyOpen || notificationsOpen || mobileMenu) {
@@ -285,7 +291,13 @@ export default function Home() {
     if (Math.abs(deltaX) < 56 || Math.abs(deltaX) < Math.abs(deltaY) * 1.2) return;
     const currentIndex = mobileSections.indexOf(view);
     const nextIndex = deltaX < 0 ? currentIndex + 1 : currentIndex - 1;
-    if (nextIndex >= 0 && nextIndex < mobileSections.length) selectNav(mobileSections[nextIndex], deltaX < 0 ? "next" : "prev");
+    if (nextIndex >= 0 && nextIndex < mobileSections.length) {
+      setEdgeBounce(null);
+      selectNav(mobileSections[nextIndex], deltaX < 0 ? "next" : "prev");
+    } else {
+      setSlideDirection(null);
+      setEdgeBounce(deltaX < 0 ? "end" : "start");
+    }
   }
 
   function openAnalyze() { setAnalysisResult(undefined); setMealModal(true); }
@@ -321,7 +333,7 @@ export default function Home() {
       {mobileMenu && <div className={`zadak-mobile-menu border-t px-5 py-3 lg:hidden ${dark ? "border-white/10 bg-[#182522]" : "border-[#e4e9e2] bg-[#fbfbf8]"}`}><div className="flex flex-wrap gap-2">{navItems.map(({ key, icon: Icon }) => <button key={key} onClick={() => selectNav(key)} className="flex items-center gap-2 rounded-full bg-[#e8f1eb] px-3 py-2 text-xs font-semibold text-[#087b69]"><Icon size={14} />{t[key]}</button>)}{!isAuthenticated && <button onClick={startLogin} className="flex items-center gap-2 rounded-full bg-[#087b69] px-3 py-2 text-xs font-semibold text-white"><LogIn size={14} />{t.login}</button>}</div></div>}
     </header>
 
-    <div key={view} className={`zadak-view-stage ${slideDirection ? `is-${slideDirection}` : ""}`}>
+    <div key={view} className={`zadak-view-stage ${slideDirection ? `is-${slideDirection}` : ""} ${edgeBounce ? `is-edge-${edgeBounce}` : ""}`}>
     {view === "home" && <main className="mx-auto max-w-[1220px] px-4 pb-12 pt-5 sm:px-6 lg:px-8 lg:pt-7">
       <section className="zadak-home-hero relative overflow-hidden rounded-[32px] px-5 py-6 text-white shadow-[0_24px_60px_rgba(12,104,78,.18)] sm:px-9 sm:py-9 lg:px-12 lg:py-11">
         <div className="absolute inset-0 opacity-[.12]" style={{ backgroundImage: "radial-gradient(rgba(255,255,255,.95) .75px, transparent .75px)", backgroundSize: "10px 10px" }} />
@@ -379,7 +391,7 @@ export default function Home() {
     {view === "profile" && <ProfileView form={profileForm} setForm={setProfileForm} t={t} dark={dark} onSave={saveProfile} saving={saveProfileMutation.isPending} saved={saveProfileMutation.isSuccess} isAuthenticated={isAuthenticated} onLogin={startLogin} user={user} onLogout={() => void logout()} calculation={goalCalculation.data} canCalculate={canCalculateGoals} calculating={goalCalculation.isFetching} />}
 
     </div>
-    <MobileSectionIndicator view={view} t={t} dark={dark} transitioning={Boolean(slideDirection)} />
+    <MobileSectionIndicator view={view} t={t} dark={dark} transitioning={Boolean(slideDirection)} edgeBounce={edgeBounce} />
     <MobileBottomNav view={view} onSelect={selectNav} t={t} dark={dark} />
     <footer className="mx-auto flex max-w-[1180px] justify-end px-5 pb-5 lg:px-8"><span className={`rounded-full px-3 py-1.5 text-[9px] font-semibold shadow-sm ${dark ? "bg-[#20312b] text-[#9db5a8]" : "bg-white text-[#9da59d]"}`}>Made with Manus ◈</span></footer>
 

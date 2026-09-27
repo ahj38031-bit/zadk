@@ -707,4 +707,35 @@
     }
   }
 
+
+  @keyframes zadak-edge-bounce-start {
+    0%, 100% { transform: translateX(0); }
+    45% { transform: translateX(10px); }
+    72% { transform: translateX(-3px); }
+  }
+
+  @keyframes zadak-edge-bounce-end {
+    0%, 100% { transform: translateX(0); }
+    45% { transform: translateX(-10px); }
+    72% { transform: translateX(3px); }
+  }
+
+  @media (max-width: 639px) and (prefers-reduced-motion: no-preference) {
+    .zadak-view-stage.is-edge-start {
+      animation: zadak-edge-bounce-start 320ms cubic-bezier(.23, 1, .32, 1) both;
+    }
+
+    .zadak-view-stage.is-edge-end {
+      animation: zadak-edge-bounce-end 320ms cubic-bezier(.23, 1, .32, 1) both;
+    }
+
+    .zadak-section-indicator.is-bouncing-start {
+      animation: zadak-edge-bounce-start 320ms cubic-bezier(.23, 1, .32, 1) both;
+    }
+
+    .zadak-section-indicator.is-bouncing-end {
+      animation: zadak-edge-bounce-end 320ms cubic-bezier(.23, 1, .32, 1) both;
+    }
+  }
+
 }
