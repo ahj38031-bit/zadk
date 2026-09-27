@@ -168,6 +168,7 @@ export default function Home() {
   const dark = theme === "dark";
   const [language, setLanguage] = useState<Language>("ar");
   const [view, setView] = useState<View>("home");
+  const [slideDirection, setSlideDirection] = useState<"next" | "prev" | null>(null);
   const [mobileMenu, setMobileMenu] = useState(false);
   const swipeStartRef = useRef<{ x: number; y: number } | null>(null);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
@@ -237,8 +238,9 @@ export default function Home() {
     calorieSuggestionMutation.mutate({ currentCalories: profile.calorieGoal, progressPercent: homeProgress.percent, daysRemaining: homeDaysRemaining, goal: profile.goal, adjustmentDirection, currentWeightKg: profile.weightKg, targetWeightKg: profile.targetWeightKg, language }, { onSuccess: setCalorieSuggestion, onError: () => { suggestionKeyRef.current = undefined; notify("error", t.suggestionError); } });
   }, [isAuthenticated, homeProgress?.percent, homeDaysRemaining, isBehindSchedule, profile.weightKg, profile.targetWeightKg, profile.targetDate, profile.calorieGoal, profile.goal, language]);
 
-  function selectNav(key: string) {
+  function selectNav(key: string, direction: "next" | "prev" | null = null) {
     setMobileMenu(false);
+    setSlideDirection(direction);
     if (key === "analyze") { setMealModal(true); return; }
     setView(key as View);
   }
@@ -268,7 +270,7 @@ export default function Home() {
     const sections: View[] = ["home", "history", "stats", "profile"];
     const currentIndex = sections.indexOf(view);
     const nextIndex = deltaX < 0 ? currentIndex + 1 : currentIndex - 1;
-    if (nextIndex >= 0 && nextIndex < sections.length) selectNav(sections[nextIndex]);
+    if (nextIndex >= 0 && nextIndex < sections.length) selectNav(sections[nextIndex], deltaX < 0 ? "next" : "prev");
   }
 
   function openAnalyze() { setAnalysisResult(undefined); setMealModal(true); }
@@ -304,6 +306,7 @@ export default function Home() {
       {mobileMenu && <div className={`zadak-mobile-menu border-t px-5 py-3 lg:hidden ${dark ? "border-white/10 bg-[#182522]" : "border-[#e4e9e2] bg-[#fbfbf8]"}`}><div className="flex flex-wrap gap-2">{navItems.map(({ key, icon: Icon }) => <button key={key} onClick={() => selectNav(key)} className="flex items-center gap-2 rounded-full bg-[#e8f1eb] px-3 py-2 text-xs font-semibold text-[#087b69]"><Icon size={14} />{t[key]}</button>)}{!isAuthenticated && <button onClick={startLogin} className="flex items-center gap-2 rounded-full bg-[#087b69] px-3 py-2 text-xs font-semibold text-white"><LogIn size={14} />{t.login}</button>}</div></div>}
     </header>
 
+    <div key={view} className={`zadak-view-stage ${slideDirection ? `is-${slideDirection}` : ""}`}>
     {view === "home" && <main className="mx-auto max-w-[1220px] px-4 pb-12 pt-5 sm:px-6 lg:px-8 lg:pt-7">
       <section className="zadak-home-hero relative overflow-hidden rounded-[32px] px-5 py-6 text-white shadow-[0_24px_60px_rgba(12,104,78,.18)] sm:px-9 sm:py-9 lg:px-12 lg:py-11">
         <div className="absolute inset-0 opacity-[.12]" style={{ backgroundImage: "radial-gradient(rgba(255,255,255,.95) .75px, transparent .75px)", backgroundSize: "10px 10px" }} />
@@ -360,6 +363,7 @@ export default function Home() {
     {view === "stats" && <StatsView meals={meals} weightLogs={weightLogs} profile={profile} t={t} language={language} dark={dark} weeklyAverage={weeklyAverage} />}
     {view === "profile" && <ProfileView form={profileForm} setForm={setProfileForm} t={t} dark={dark} onSave={saveProfile} saving={saveProfileMutation.isPending} saved={saveProfileMutation.isSuccess} isAuthenticated={isAuthenticated} onLogin={startLogin} user={user} onLogout={() => void logout()} calculation={goalCalculation.data} canCalculate={canCalculateGoals} calculating={goalCalculation.isFetching} />}
 
+    </div>
     <MobileBottomNav view={view} onSelect={selectNav} t={t} dark={dark} />
     <footer className="mx-auto flex max-w-[1180px] justify-end px-5 pb-5 lg:px-8"><span className={`rounded-full px-3 py-1.5 text-[9px] font-semibold shadow-sm ${dark ? "bg-[#20312b] text-[#9db5a8]" : "bg-white text-[#9da59d]"}`}>Made with Manus ◈</span></footer>
 
