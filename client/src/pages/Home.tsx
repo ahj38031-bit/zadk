@@ -155,6 +155,13 @@ function MacroRow({ label, current, goal, color, unit }: { label: string; curren
   return <div className="mb-4 last:mb-0"><div className="mb-2 flex items-center justify-between text-[11px] font-medium text-[#6f756f]"><span>{label}</span><span dir="ltr" className="text-[10px] text-[#48514c]">{current} / {goal}{unit}</span></div><div className="h-[7px] overflow-hidden rounded-full bg-[#e9eeea]"><div className="h-full rounded-full transition-all duration-700" style={{ width: `${percent}%`, backgroundColor: color }} /></div></div>;
 }
 
+function MobileBottomNav({ view, onSelect, t, dark }: { view: View; onSelect: (key: string) => void; t: Labels; dark: boolean }) {
+  return <nav className={`zadak-bottom-nav lg:hidden ${dark ? "border-white/10 bg-[#182522]/95 text-[#b9d0c0]" : "border-[#e1e9e1] bg-white/95 text-[#7a877e]"}`} aria-label={t.navigation}>
+    {navItems.map(({ key, icon: Icon }) => <button key={key} type="button" onClick={() => onSelect(key)} aria-current={view === key ? "page" : undefined} className={`zadak-bottom-nav-item ${view === key ? (dark ? "is-active-dark" : "is-active") : ""}`}>
+      <span className="zadak-bottom-nav-icon"><Icon size={17} strokeWidth={view === key ? 2.4 : 1.9} /></span><span>{t[key]}</span>
+    </button>)}
+  </nav>;
+}
 export default function Home() {
   const { user, loading: authLoading, isAuthenticated, logout } = useAuth();
   const { theme, toggleTheme } = useTheme();
@@ -324,6 +331,7 @@ export default function Home() {
     {view === "stats" && <StatsView meals={meals} weightLogs={weightLogs} profile={profile} t={t} language={language} dark={dark} weeklyAverage={weeklyAverage} />}
     {view === "profile" && <ProfileView form={profileForm} setForm={setProfileForm} t={t} dark={dark} onSave={saveProfile} saving={saveProfileMutation.isPending} saved={saveProfileMutation.isSuccess} isAuthenticated={isAuthenticated} onLogin={startLogin} user={user} onLogout={() => void logout()} calculation={goalCalculation.data} canCalculate={canCalculateGoals} calculating={goalCalculation.isFetching} />}
 
+    <MobileBottomNav view={view} onSelect={selectNav} t={t} dark={dark} />
     <footer className="mx-auto flex max-w-[1180px] justify-end px-5 pb-5 lg:px-8"><span className={`rounded-full px-3 py-1.5 text-[9px] font-semibold shadow-sm ${dark ? "bg-[#20312b] text-[#9db5a8]" : "bg-white text-[#9da59d]"}`}>Made with Manus ◈</span></footer>
 
     {privacyOpen && <div className="zadak-modal-backdrop fixed inset-0 z-50 grid place-items-center bg-[#10271f]/35 p-5 backdrop-blur-sm" onClick={() => setPrivacyOpen(false)}><div className={`zadak-modal-panel relative w-full max-w-md rounded-[25px] p-6 shadow-2xl ${dark ? "bg-[#20312b] text-[#e8f5ec]" : "bg-white text-[#23342b]"}`} onClick={(e) => e.stopPropagation()}><button onClick={() => setPrivacyOpen(false)} className="absolute left-4 top-4 grid h-8 w-8 place-items-center rounded-full bg-black/5"><X size={15} /></button><div className="mb-5 grid h-12 w-12 place-items-center rounded-full bg-[#eaf6eb] text-[#16866f]"><ShieldCheck size={22} /></div><h3 className="text-xl font-black">{t.privacyTitle}</h3><p className={`mt-3 text-sm leading-7 ${dark ? "text-[#b3c7ba]" : "text-[#738078]"}`}>{t.privacyText}</p><div className={`mt-5 space-y-3 rounded-2xl p-4 text-xs leading-6 ${dark ? "bg-[#182a23] text-[#c0d4c6]" : "bg-[#f6faf4] text-[#65746a]"}`}><div className="flex gap-2"><Check size={15} className="mt-1 shrink-0 text-[#169374]" /> لا تُرسل الصور إلا عند طلب التحليل.</div><div className="flex gap-2"><Check size={15} className="mt-1 shrink-0 text-[#169374]" /> يمكنك حذف سجل اليوم في أي وقت.</div><div className="flex gap-2"><Check size={15} className="mt-1 shrink-0 text-[#169374]" /> بياناتك محفوظة بحسابك ويمكنك حذفها من السجل.</div></div><button onClick={() => setPrivacyOpen(false)} className="mt-5 w-full rounded-full bg-[#087b69] py-3 text-sm font-bold text-white">{t.close}</button></div></div>}
