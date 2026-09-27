@@ -688,4 +688,23 @@
     .zadak-section-dot { transition: none; }
   }
 
+
+  @keyframes zadak-indicator-gradient {
+    from { background-position: 0% 50%; }
+    to { background-position: 100% 50%; }
+  }
+
+  @media (max-width: 639px) and (prefers-reduced-motion: no-preference) {
+    .zadak-section-indicator.is-transitioning .zadak-section-dot {
+      background: linear-gradient(90deg, #8bd6a4, #16866f, #f0bd63, #16866f, #8bd6a4);
+      background-size: 240% 100%;
+      animation: zadak-indicator-gradient 500ms cubic-bezier(.23, 1, .32, 1) both;
+    }
+
+    .zadak-section-indicator.is-transitioning .zadak-section-dot.is-active {
+      background: linear-gradient(90deg, #73c694, #087b69, #d9a84f, #087b69, #73c694);
+      background-size: 240% 100%;
+    }
+  }
+
 }

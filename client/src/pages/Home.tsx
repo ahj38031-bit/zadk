@@ -156,10 +156,10 @@ function MacroRow({ label, current, goal, color, unit }: { label: string; curren
   return <div className="mb-4 last:mb-0"><div className="mb-2 flex items-center justify-between text-[11px] font-medium text-[#6f756f]"><span>{label}</span><span dir="ltr" className="text-[10px] text-[#48514c]">{current} / {goal}{unit}</span></div><div className="h-[7px] overflow-hidden rounded-full bg-[#e9eeea]"><div className="h-full rounded-full transition-all duration-700" style={{ width: `${percent}%`, backgroundColor: color }} /></div></div>;
 }
 
-function MobileSectionIndicator({ view, t, dark }: { view: View; t: Labels; dark: boolean }) {
+function MobileSectionIndicator({ view, t, dark, transitioning }: { view: View; t: Labels; dark: boolean; transitioning: boolean }) {
   const currentIndex = Math.max(0, mobileSections.indexOf(view));
   const label = t.sectionIndicator.replace("{current}", String(currentIndex + 1)).replace("{total}", String(mobileSections.length));
-  return <div className={`zadak-section-indicator lg:hidden ${dark ? "bg-[#20312b]/95 text-[#b9d0c0]" : "bg-white/95 text-[#708077]"}`} aria-label={label}>
+  return <div className={`zadak-section-indicator lg:hidden ${transitioning ? "is-transitioning" : ""} ${dark ? "bg-[#20312b]/95 text-[#b9d0c0]" : "bg-white/95 text-[#708077]"}`} aria-label={label}>
     <span aria-hidden="true" className="flex items-center gap-1.5">{mobileSections.map((section) => <span key={section} className={`zadak-section-dot ${section === view ? "is-active" : ""}`} />)}</span>
     <span dir="ltr" className="text-[9px] font-black tabular-nums">{currentIndex + 1}/{mobileSections.length}</span>
   </div>;
@@ -254,6 +254,12 @@ export default function Home() {
     if (key === "analyze") { setMealModal(true); return; }
     setView(key as View);
   }
+
+  useEffect(() => {
+    if (!slideDirection) return;
+    const timer = window.setTimeout(() => setSlideDirection(null), 340);
+    return () => window.clearTimeout(timer);
+  }, [slideDirection]);
 
   function handleTouchStart(event: React.TouchEvent<HTMLDivElement>) {
     if (typeof window === "undefined" || !window.matchMedia("(max-width: 639px)").matches || mealModal || privacyOpen || notificationsOpen || mobileMenu) {
@@ -373,7 +379,7 @@ export default function Home() {
     {view === "profile" && <ProfileView form={profileForm} setForm={setProfileForm} t={t} dark={dark} onSave={saveProfile} saving={saveProfileMutation.isPending} saved={saveProfileMutation.isSuccess} isAuthenticated={isAuthenticated} onLogin={startLogin} user={user} onLogout={() => void logout()} calculation={goalCalculation.data} canCalculate={canCalculateGoals} calculating={goalCalculation.isFetching} />}
 
     </div>
-    <MobileSectionIndicator view={view} t={t} dark={dark} />
+    <MobileSectionIndicator view={view} t={t} dark={dark} transitioning={Boolean(slideDirection)} />
     <MobileBottomNav view={view} onSelect={selectNav} t={t} dark={dark} />
     <footer className="mx-auto flex max-w-[1180px] justify-end px-5 pb-5 lg:px-8"><span className={`rounded-full px-3 py-1.5 text-[9px] font-semibold shadow-sm ${dark ? "bg-[#20312b] text-[#9db5a8]" : "bg-white text-[#9da59d]"}`}>Made with Manus ◈</span></footer>
 
