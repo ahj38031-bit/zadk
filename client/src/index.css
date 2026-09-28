@@ -261,11 +261,14 @@
   .zadak-app-shell {
     isolation: isolate;
   }
-  .zadak-app-shell.is-direction-changing {
-    animation: zadak-direction-switch 240ms cubic-bezier(.23, 1, .32, 1) both;
+  .zadak-app-shell.is-direction-changing,
+  .zadak-app-shell.is-language-changing {
+    animation: zadak-language-switch 260ms cubic-bezier(.23, 1, .32, 1) both;
+    will-change: opacity, transform;
   }
-  @keyframes zadak-direction-switch {
-    from { opacity: .86; transform: translateY(2px); }
+  @keyframes zadak-language-switch {
+    from { opacity: .84; transform: translateY(5px); }
+    55% { opacity: .97; transform: translateY(1px); }
     to { opacity: 1; transform: translateY(0); }
   }
 
@@ -362,7 +365,8 @@
     .zadak-dashboard-card,
     .zadak-stat-card,
     .zadak-mobile-menu,
-    .zadak-app-shell.is-direction-changing { transition: none; animation: none; }
+    .zadak-app-shell.is-direction-changing,
+    .zadak-app-shell.is-language-changing { transition: none; animation: none; }
   }
 
 
