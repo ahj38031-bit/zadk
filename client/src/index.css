@@ -261,6 +261,13 @@
   .zadak-app-shell {
     isolation: isolate;
   }
+  .zadak-app-shell.is-direction-changing {
+    animation: zadak-direction-switch 240ms cubic-bezier(.23, 1, .32, 1) both;
+  }
+  @keyframes zadak-direction-switch {
+    from { opacity: .86; transform: translateY(2px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
 
   .zadak-header {
     transition: background-color 240ms ease, border-color 240ms ease, box-shadow 240ms ease;
@@ -354,7 +361,8 @@
     .zadak-loading-card,
     .zadak-dashboard-card,
     .zadak-stat-card,
-    .zadak-mobile-menu { transition: none; animation: none; }
+    .zadak-mobile-menu,
+    .zadak-app-shell.is-direction-changing { transition: none; animation: none; }
   }
 
 
