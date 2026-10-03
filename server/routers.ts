@@ -242,7 +242,7 @@ export const appRouter = router({
       const calorieMismatch = parsed.calories > 0 ? Math.abs(ingredientCalories - parsed.calories) / parsed.calories : 0;
       const adjustedConfidence = calorieMismatch > 0.35 ? Math.max(25, parsed.confidence - 15) : parsed.confidence;
       const meal = await createMeal({ userId: ctx.user.id, mealName: parsed.mealName.slice(0, 180), description: input.description ?? null, mealType: parsed.mealType, calories: parsed.calories, protein: parsed.protein, carbs: parsed.carbs, fat: parsed.fat, confidence: adjustedConfidence, aiSummary: JSON.stringify({ summary: parsed.summary, items: parsed.items, ingredients: parsed.ingredients, assumptions: parsed.assumptions, calorieMismatch, eatingMethod: input.eatingMethod }), imageKey, imageUrl });
-      return { meal, analysis: { ...parsed, confidence: adjustedConfidence, calorieMismatch } };
+      return { meal, analysis: { ...parsed, confidence: adjustedConfidence, calorieMismatch, eatingMethod: input.eatingMethod } };
     }),
   }),
 });
