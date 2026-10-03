@@ -4,7 +4,7 @@ import { getSessionCookieOptions } from "./_core/cookies";
 import { invokeLLM } from "./_core/llm";
 import { systemRouter } from "./_core/systemRouter";
 import { protectedProcedure, publicProcedure, router } from "./_core/trpc";
-import { clearTodayMeals, createMeal, deleteMeal, getDashboard, recordWeightLog, updateProfile } from "./db";
+import { clearTodayMeals, createMeal, deleteMeal, getDashboard, recordWeightLog, updateMealNutrition, updateProfile } from "./db";
 import { storagePut } from "./storage";
 import { TRPCError } from "@trpc/server";
 import { calculateNutritionGoals } from "./nutrition";
@@ -160,6 +160,7 @@ export const appRouter = router({
       historyCalorieFilter: z.enum(["all", "under400", "400to700", "over700"]),
       historySortOrder: z.enum(["latest", "caloriesDesc"]),
     })).mutation(({ ctx, input }) => updateProfile(ctx.user.id, input)),
+    updateMealNutrition: protectedProcedure.input(z.object({ id: z.number().int().positive(), calories: z.number().int().nonnegative(), protein: z.number().int().nonnegative(), carbs: z.number().int().nonnegative(), fat: z.number().int().nonnegative(), eatingMethod: z.enum(["bread", "spoon", "nothing"]) })).mutation(({ ctx, input }) => updateMealNutrition(ctx.user.id, input.id, { calories: input.calories, protein: input.protein, carbs: input.carbs, fat: input.fat })),
     deleteMeal: protectedProcedure.input(z.object({ id: z.number().int().positive() })).mutation(({ ctx, input }) => deleteMeal(ctx.user.id, input.id)),
     clearToday: protectedProcedure.mutation(({ ctx }) => clearTodayMeals(ctx.user.id)),
     analyzeMeal: protectedProcedure.input(z.object({

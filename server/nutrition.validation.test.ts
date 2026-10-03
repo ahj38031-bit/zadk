@@ -4,6 +4,7 @@ import type { TrpcContext } from "./_core/context";
 import { calculateNutritionGoals } from "./nutrition";
 import { getProgressMotivationStatus } from "../shared/progress";
 import { buildNutritionComparison } from "../shared/nutrition-chart";
+import { recalculateEatingMethod } from "../shared/eating-method";
 import { filterHistoryMeals, sortHistoryMeals } from "../shared/history-filters";
 
 type AuthenticatedUser = NonNullable<TrpcContext["user"]>;
@@ -55,6 +56,12 @@ describe("nutrition input validation", () => {
     expect(gain.carbsGoal).toBeGreaterThan(maintain.carbsGoal);
   });
 
+  it("recalculates nutrition immediately when the eating method changes", () => {
+    const base = { calories: 500, protein: 24, carbs: 60, fat: 12 };
+    const withBread = recalculateEatingMethod(base, "nothing", "bread");
+    expect(withBread).toEqual({ calories: 660, protein: 29, carbs: 91, fat: 14 });
+    expect(recalculateEatingMethod(withBread, "bread", "spoon")).toEqual(base);
+  });
   it("requires a meal description or image", async () => {
     const caller = appRouter.createCaller(createContext());
     await expect(caller.nutrition.analyzeMeal({})).rejects.toMatchObject({ code: "BAD_REQUEST" });
