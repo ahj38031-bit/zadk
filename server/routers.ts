@@ -166,6 +166,7 @@ export const appRouter = router({
       description: z.string().trim().max(500).optional(),
       imageData: z.string().max(8_000_000).optional(),
       imageMimeType: imageMime.optional(),
+      eatingMethod: z.enum(["bread", "spoon", "nothing"]).default("nothing"),
     }).refine((value) => Boolean(value.description || value.imageData), { message: "أضف وصفاً أو صورة للوجبة" })).mutation(async ({ ctx, input }) => {
       let imageUrl: string | undefined;
       let imageKey: string | undefined;
@@ -194,6 +195,7 @@ export const appRouter = router({
         "استخدم نطاقاً محافظاً للحصة الظاهرة، وعبّر عن عدم اليقين في confidence وassumptions. لا تقدم نصائح طبية أو تشخيصاً.",
         "اللغة العربية في mealName وsummary وitems وingredients.name وingredients.portion وassumptions.",
         input.description ? `ملاحظة المستخدم هي مصدر مهم للمعلومات غير المرئية: استخدمها لتصحيح أو استكمال الصورة، خصوصاً نوع الزيت والصلصات وطريقة الطهي وحجم الحصة، ولا تتجاهلها. ملاحظة المستخدم: ${input.description}` : "لا توجد ملاحظة نصية؛ اعتمد على الصورة واذكر الافتراضات.",
+        `طريقة تناول الوجبة التي اختارها المستخدم: ${input.eatingMethod === "bread" ? "مع الخبز" : input.eatingMethod === "spoon" ? "بالملعقة" : "بدون شيء إضافي"}. استخدمها لضبط تقدير الحصة: أضف الخبز فقط عند اختيار مع الخبز، ولا تضف مكوّناً غذائياً إضافياً عند اختيار بالملعقة أو بدون شيء، واذكر أثر الاختيار في assumptions عند الحاجة.`,
       ].join("\n");
       const content = imagePart ? [{ type: "text" as const, text: prompt }, imagePart] : prompt;
       let response;
@@ -239,7 +241,7 @@ export const appRouter = router({
       const ingredientCalories = parsed.ingredients.reduce((sum, ingredient) => sum + ingredient.calories, 0);
       const calorieMismatch = parsed.calories > 0 ? Math.abs(ingredientCalories - parsed.calories) / parsed.calories : 0;
       const adjustedConfidence = calorieMismatch > 0.35 ? Math.max(25, parsed.confidence - 15) : parsed.confidence;
-      const meal = await createMeal({ userId: ctx.user.id, mealName: parsed.mealName.slice(0, 180), description: input.description ?? null, mealType: parsed.mealType, calories: parsed.calories, protein: parsed.protein, carbs: parsed.carbs, fat: parsed.fat, confidence: adjustedConfidence, aiSummary: JSON.stringify({ summary: parsed.summary, items: parsed.items, ingredients: parsed.ingredients, assumptions: parsed.assumptions, calorieMismatch }), imageKey, imageUrl });
+      const meal = await createMeal({ userId: ctx.user.id, mealName: parsed.mealName.slice(0, 180), description: input.description ?? null, mealType: parsed.mealType, calories: parsed.calories, protein: parsed.protein, carbs: parsed.carbs, fat: parsed.fat, confidence: adjustedConfidence, aiSummary: JSON.stringify({ summary: parsed.summary, items: parsed.items, ingredients: parsed.ingredients, assumptions: parsed.assumptions, calorieMismatch, eatingMethod: input.eatingMethod }), imageKey, imageUrl });
       return { meal, analysis: { ...parsed, confidence: adjustedConfidence, calorieMismatch } };
     }),
   }),
