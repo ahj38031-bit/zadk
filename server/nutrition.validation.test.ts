@@ -62,6 +62,12 @@ describe("nutrition input validation", () => {
     expect(withBread).toEqual({ calories: 660, protein: 29, carbs: 91, fat: 14 });
     expect(recalculateEatingMethod(withBread, "bread", "spoon")).toEqual(base);
   });
+  it("restores the original nutrition after undoing an eating-method change", () => {
+    const original = { calories: 640, protein: 30, carbs: 72, fat: 18 };
+    const changed = recalculateEatingMethod(original, "nothing", "bread");
+    const restored = recalculateEatingMethod(changed, "bread", "nothing");
+    expect(restored).toEqual(original);
+  });
   it("requires a meal description or image", async () => {
     const caller = appRouter.createCaller(createContext());
     await expect(caller.nutrition.analyzeMeal({})).rejects.toMatchObject({ code: "BAD_REQUEST" });
