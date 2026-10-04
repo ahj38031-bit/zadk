@@ -5,6 +5,7 @@ import { calculateNutritionGoals } from "./nutrition";
 import { getProgressMotivationStatus } from "../shared/progress";
 import { buildNutritionComparison } from "../shared/nutrition-chart";
 import { recalculateEatingMethod } from "../shared/eating-method";
+import { scalePortionNutrition } from "../shared/portion-size";
 import { filterHistoryMeals, sortHistoryMeals } from "../shared/history-filters";
 
 type AuthenticatedUser = NonNullable<TrpcContext["user"]>;
@@ -56,6 +57,12 @@ describe("nutrition input validation", () => {
     expect(gain.carbsGoal).toBeGreaterThan(maintain.carbsGoal);
   });
 
+  it("scales nutrition when the user changes portion size", () => {
+    const base = { calories: 500, protein: 30, carbs: 60, fat: 15 };
+    expect(scalePortionNutrition(base, "standard", "small")).toEqual({ calories: 350, protein: 21, carbs: 42, fat: 11 });
+    expect(scalePortionNutrition(base, "standard", "large")).toEqual({ calories: 675, protein: 41, carbs: 81, fat: 20 });
+    expect(scalePortionNutrition(scalePortionNutrition(base, "standard", "large"), "large", "standard")).toEqual(base);
+  });
   it("recalculates nutrition immediately when the eating method changes", () => {
     const base = { calories: 500, protein: 24, carbs: 60, fat: 12 };
     const withBread = recalculateEatingMethod(base, "nothing", "bread");
