@@ -80,6 +80,11 @@ describe("nutrition input validation", () => {
     await expect(caller.nutrition.analyzeMeal({})).rejects.toMatchObject({ code: "BAD_REQUEST" });
   });
 
+  it("rejects invalid exact food weights before analysis", async () => {
+    const caller = appRouter.createCaller(createContext());
+    await expect(caller.nutrition.analyzeMeal({ description: "طبق أرز", portionGrams: 0 })).rejects.toMatchObject({ code: "BAD_REQUEST" });
+    await expect(caller.nutrition.analyzeMeal({ description: "طبق أرز", portionGrams: 3001 })).rejects.toMatchObject({ code: "BAD_REQUEST" });
+  });
   it("rejects unsupported eating methods before analysis", async () => {
     const caller = appRouter.createCaller(createContext());
     await expect(caller.nutrition.analyzeMeal({
