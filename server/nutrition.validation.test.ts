@@ -114,6 +114,17 @@ describe("nutrition input validation", () => {
     })).rejects.toMatchObject({ code: "BAD_REQUEST" });
   });
 
+  it("rejects unsupported preferred eating methods before touching the database", async () => {
+    const caller = appRouter.createCaller(createContext());
+    await expect(caller.nutrition.saveProfile({
+      calorieGoal: 2139,
+      proteinGoal: 98,
+      carbsGoal: 293,
+      fatGoal: 64,
+      activityLevel: "moderate",
+      preferredEatingMethod: "fork" as "nothing",
+    })).rejects.toMatchObject({ code: "BAD_REQUEST" });
+  });
   it("selects motivation based on progress and timeline", () => {
     expect(getProgressMotivationStatus(100, 20)).toBe("reached");
     expect(getProgressMotivationStatus(40, 30)).toBe("onTrack");

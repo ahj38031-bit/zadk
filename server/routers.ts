@@ -144,6 +144,7 @@ export const appRouter = router({
       targetDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().optional(),
       activityLevel: z.enum(["sedentary", "light", "moderate", "high"]),
       goal: z.enum(["lose", "maintain", "gain"]).default("maintain"),
+      preferredEatingMethod: z.enum(["bread", "spoon", "nothing"]).default("nothing"),
       useAiCalorieAdjustment: z.boolean().optional(),
     })).mutation(async ({ ctx, input }) => {
       const goals = input.age && input.heightCm && input.weightKg
