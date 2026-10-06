@@ -228,7 +228,7 @@ describe("smart nutrition studio logic", () => {
   it("creates a seven-day localized plan within a reasonable calorie floor", () => {
     const plan = buildWeeklyPlan(1800, "ar");
     expect(plan).toHaveLength(7);
-    expect(plan[0]?.meal).toContain("فطور");
-    expect(plan.every((day) => day.calories >= 280)).toBe(true);
+    expect(plan[0]?.breakfast).toContain("زبادي");
+    expect(plan.every((day) => day.calories.length === 3 && day.totalCalories >= 1200)).toBe(true);
   });
 });
