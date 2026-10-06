@@ -164,6 +164,22 @@ export const appRouter = router({
     updateMealNutrition: protectedProcedure.input(z.object({ id: z.number().int().positive(), calories: z.number().int().nonnegative(), protein: z.number().int().nonnegative(), carbs: z.number().int().nonnegative(), fat: z.number().int().nonnegative(), eatingMethod: z.enum(["bread", "spoon", "nothing"]) })).mutation(({ ctx, input }) => updateMealNutrition(ctx.user.id, input.id, { calories: input.calories, protein: input.protein, carbs: input.carbs, fat: input.fat })),
     deleteMeal: protectedProcedure.input(z.object({ id: z.number().int().positive() })).mutation(({ ctx, input }) => deleteMeal(ctx.user.id, input.id)),
     clearToday: protectedProcedure.mutation(({ ctx }) => clearTodayMeals(ctx.user.id)),
+    generateFridgeRecipe: protectedProcedure.input(z.object({
+      ingredients: z.array(z.string().trim().min(1).max(80)).min(1).max(20),
+      calorieGoal: z.number().int().min(800).max(10000),
+      language: z.enum(["ar", "en", "tr"]).default("ar"),
+    })).mutation(async ({ input }) => {
+      const languageName = input.language === "en" ? "English" : input.language === "tr" ? "Turkish" : "Arabic";
+      const schema = { type: "object", properties: { title: { type: "string" }, summary: { type: "string" }, calories: { type: "integer", minimum: 0, maximum: 2000 }, protein: { type: "integer", minimum: 0, maximum: 200 }, ingredients: { type: "array", items: { type: "string" } }, steps: { type: "array", items: { type: "string" } }, shoppingList: { type: "array", items: { type: "string" } } }, required: ["title", "summary", "calories", "protein", "ingredients", "steps", "shoppingList"], additionalProperties: false } as const;
+      try {
+        const response = await invokeLLM({ model: "gemini-3.1-pro-preview", messages: [{ role: "system", content: `أنت مخطط وصفات صحية. أعد JSON فقط باللغة ${languageName}. استخدم المكونات المتوفرة قدر الإمكان، لا تقدم نصائح طبية، واجعل السعرات مناسبة لوجبة تقارب ثلث الهدف اليومي.` }, { role: "user", content: `المكونات المتوفرة: ${input.ingredients.join(", ")}. الهدف اليومي: ${input.calorieGoal} سعرة. أنشئ وصفة عملية مع سعرات تقريبية وبروتين وقائمة مشتريات فقط لما ينقص.` }], thinking: { budget_tokens: 512 }, maxTokens: 900, responseFormat: { type: "json_schema", json_schema: { name: "fridge_recipe", strict: true, schema } } });
+        const parsed = z.object({ title: z.string().min(1), summary: z.string().min(1), calories: z.number().int().nonnegative(), protein: z.number().int().nonnegative(), ingredients: z.array(z.string()), steps: z.array(z.string()), shoppingList: z.array(z.string()) }).parse(JSON.parse(getTextContent(response.choices?.[0]?.message?.content)));
+        return parsed;
+      } catch (error) {
+        console.error("[Nutrition] Fridge recipe failed:", error);
+        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "تعذر إنشاء الوصفة الآن. حاول مرة أخرى." });
+      }
+    }),
     analyzeMeal: protectedProcedure.input(z.object({
       description: z.string().trim().max(500).optional(),
       imageData: z.string().max(8_000_000).optional(),

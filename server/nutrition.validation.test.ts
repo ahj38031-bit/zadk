@@ -216,3 +216,19 @@ describe("nutrition input validation", () => {
     })).rejects.toMatchObject({ code: "BAD_REQUEST" });
   });
 });
+
+import { buildWeeklyPlan, getMealInsights } from "../shared/smart-nutrition";
+
+describe("smart nutrition studio logic", () => {
+  it("flags calorie, fat, and carbohydrate-heavy meals against the profile", () => {
+    const result = getMealInsights({ calories: 900, protein: 20, carbs: 160, fat: 40 }, { calorieGoal: 2000, proteinGoal: 100, carbsGoal: 250, fatGoal: 60, goal: "lose" });
+    expect(result.alerts).toEqual(["calories", "fat", "sugar"]);
+    expect(result.alternative).toBe("reduce-rice-or-add-vegetables");
+  });
+  it("creates a seven-day localized plan within a reasonable calorie floor", () => {
+    const plan = buildWeeklyPlan(1800, "ar");
+    expect(plan).toHaveLength(7);
+    expect(plan[0]?.meal).toContain("فطور");
+    expect(plan.every((day) => day.calories >= 280)).toBe(true);
+  });
+});
