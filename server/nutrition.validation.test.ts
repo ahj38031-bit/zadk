@@ -66,7 +66,7 @@ describe("nutrition input validation", () => {
   });
   it("compares ingredient weight with the user's exact total", () => {
     expect(calculateWeightVerification([{ grams: 120 }, { grams: 180 }], 300)).toMatchObject({ ingredientGrams: 300, differenceGrams: 0, matchPercent: 100, status: "excellent" });
-    expect(calculateWeightVerification([{ grams: 80 }, { grams: 120 }], 300)).toMatchObject({ ingredientGrams: 200, differenceGrams: -100, matchPercent: 67, status: "off" });
+    expect(calculateWeightVerification([{ grams: 80 }, { grams: 120 }], 300)).toMatchObject({ ingredientGrams: 200, differenceGrams: -100, deviationPercent: 33, matchPercent: 67, status: "off" });
     expect(calculateWeightVerification([{ grams: 100 }], 0)).toBeUndefined();
   });
   it("recalculates nutrition immediately when the eating method changes", () => {
