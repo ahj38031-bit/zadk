@@ -30,7 +30,6 @@ export const profiles = mysqlTable("profiles", {
   historyMealTypeFilter: mysqlEnum("historyMealTypeFilter", ["all", "breakfast", "lunch", "dinner", "snack"]).default("all").notNull(),
   historyCalorieFilter: mysqlEnum("historyCalorieFilter", ["all", "under400", "400to700", "over700"]).default("all").notNull(),
   historySortOrder: mysqlEnum("historySortOrder", ["latest", "caloriesDesc"]).default("latest").notNull(),
-  preferredEatingMethod: mysqlEnum("preferredEatingMethod", ["bread", "spoon", "nothing"]).default("nothing").notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
 

@@ -84,11 +84,6 @@ export async function createMeal(data: typeof meals.$inferInsert) {
   return created[0];
 }
 
-export async function updateMealNutrition(userId: number, mealId: number, data: Pick<Meal, "calories" | "protein" | "carbs" | "fat">) {
-  const db = requireDb(await getDb());
-  await db.update(meals).set(data).where(and(eq(meals.id, mealId), eq(meals.userId, userId)));
-  return { success: true } as const;
-}
 export async function deleteMeal(userId: number, mealId: number) {
   const db = requireDb(await getDb());
   await db.delete(meals).where(and(eq(meals.id, mealId), eq(meals.userId, userId)));

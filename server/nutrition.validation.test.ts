@@ -4,9 +4,6 @@ import type { TrpcContext } from "./_core/context";
 import { calculateNutritionGoals } from "./nutrition";
 import { getProgressMotivationStatus } from "../shared/progress";
 import { buildNutritionComparison } from "../shared/nutrition-chart";
-import { recalculateEatingMethod } from "../shared/eating-method";
-import { scalePortionNutrition } from "../shared/portion-size";
-import { calculateWeightVerification } from "../shared/weight-verification";
 import { filterHistoryMeals, sortHistoryMeals } from "../shared/history-filters";
 
 type AuthenticatedUser = NonNullable<TrpcContext["user"]>;
@@ -58,47 +55,11 @@ describe("nutrition input validation", () => {
     expect(gain.carbsGoal).toBeGreaterThan(maintain.carbsGoal);
   });
 
-  it("scales nutrition when the user changes portion size", () => {
-    const base = { calories: 500, protein: 30, carbs: 60, fat: 15 };
-    expect(scalePortionNutrition(base, "standard", "small")).toEqual({ calories: 350, protein: 21, carbs: 42, fat: 11 });
-    expect(scalePortionNutrition(base, "standard", "large")).toEqual({ calories: 675, protein: 41, carbs: 81, fat: 20 });
-    expect(scalePortionNutrition(scalePortionNutrition(base, "standard", "large"), "large", "standard")).toEqual(base);
-  });
-  it("compares ingredient weight with the user's exact total", () => {
-    expect(calculateWeightVerification([{ grams: 120 }, { grams: 180 }], 300)).toMatchObject({ ingredientGrams: 300, differenceGrams: 0, matchPercent: 100, status: "excellent" });
-    expect(calculateWeightVerification([{ grams: 80 }, { grams: 120 }], 300)).toMatchObject({ ingredientGrams: 200, differenceGrams: -100, deviationPercent: 33, matchPercent: 67, status: "off" });
-    expect(calculateWeightVerification([{ grams: 100 }], 0)).toBeUndefined();
-    expect(calculateWeightVerification([{ grams: 140 }, { grams: 160 }], 300)).toMatchObject({ ingredientGrams: 300, differenceGrams: 0, deviationPercent: 0, status: "excellent" });
-  });
-  it("recalculates nutrition immediately when the eating method changes", () => {
-    const base = { calories: 500, protein: 24, carbs: 60, fat: 12 };
-    const withBread = recalculateEatingMethod(base, "nothing", "bread");
-    expect(withBread).toEqual({ calories: 660, protein: 29, carbs: 91, fat: 14 });
-    expect(recalculateEatingMethod(withBread, "bread", "spoon")).toEqual(base);
-  });
-  it("restores the original nutrition after undoing an eating-method change", () => {
-    const original = { calories: 640, protein: 30, carbs: 72, fat: 18 };
-    const changed = recalculateEatingMethod(original, "nothing", "bread");
-    const restored = recalculateEatingMethod(changed, "bread", "nothing");
-    expect(restored).toEqual(original);
-  });
   it("requires a meal description or image", async () => {
     const caller = appRouter.createCaller(createContext());
     await expect(caller.nutrition.analyzeMeal({})).rejects.toMatchObject({ code: "BAD_REQUEST" });
   });
 
-  it("rejects invalid exact food weights before analysis", async () => {
-    const caller = appRouter.createCaller(createContext());
-    await expect(caller.nutrition.analyzeMeal({ description: "طبق أرز", portionGrams: 0 })).rejects.toMatchObject({ code: "BAD_REQUEST" });
-    await expect(caller.nutrition.analyzeMeal({ description: "طبق أرز", portionGrams: 3001 })).rejects.toMatchObject({ code: "BAD_REQUEST" });
-  });
-  it("rejects unsupported eating methods before analysis", async () => {
-    const caller = appRouter.createCaller(createContext());
-    await expect(caller.nutrition.analyzeMeal({
-      description: "طبق أرز",
-      eatingMethod: "fork" as "bread",
-    })).rejects.toMatchObject({ code: "BAD_REQUEST" });
-  });
   it("keeps the photo note short and rejects oversized notes", async () => {
     const caller = appRouter.createCaller(createContext());
     await expect(caller.nutrition.analyzeMeal({
@@ -133,17 +94,6 @@ describe("nutrition input validation", () => {
     })).rejects.toMatchObject({ code: "BAD_REQUEST" });
   });
 
-  it("rejects unsupported preferred eating methods before touching the database", async () => {
-    const caller = appRouter.createCaller(createContext());
-    await expect(caller.nutrition.saveProfile({
-      calorieGoal: 2139,
-      proteinGoal: 98,
-      carbsGoal: 293,
-      fatGoal: 64,
-      activityLevel: "moderate",
-      preferredEatingMethod: "fork" as "nothing",
-    })).rejects.toMatchObject({ code: "BAD_REQUEST" });
-  });
   it("selects motivation based on progress and timeline", () => {
     expect(getProgressMotivationStatus(100, 20)).toBe("reached");
     expect(getProgressMotivationStatus(40, 30)).toBe("onTrack");
@@ -214,21 +164,5 @@ describe("nutrition input validation", () => {
       historyCalorieFilter: "all",
       historySortOrder: "latest",
     })).rejects.toMatchObject({ code: "BAD_REQUEST" });
-  });
-});
-
-import { buildWeeklyPlan, getMealInsights } from "../shared/smart-nutrition";
-
-describe("smart nutrition studio logic", () => {
-  it("flags calorie, fat, and carbohydrate-heavy meals against the profile", () => {
-    const result = getMealInsights({ calories: 900, protein: 20, carbs: 160, fat: 40 }, { calorieGoal: 2000, proteinGoal: 100, carbsGoal: 250, fatGoal: 60, goal: "lose" });
-    expect(result.alerts).toEqual(["calories", "fat", "sugar"]);
-    expect(result.alternative).toBe("reduce-rice-or-add-vegetables");
-  });
-  it("creates a seven-day localized plan within a reasonable calorie floor", () => {
-    const plan = buildWeeklyPlan(1800, "ar");
-    expect(plan).toHaveLength(7);
-    expect(plan[0]?.breakfast).toContain("زبادي");
-    expect(plan.every((day) => day.calories.length === 3 && day.totalCalories >= 1200)).toBe(true);
   });
 });

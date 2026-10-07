@@ -261,69 +261,6 @@
   .zadak-app-shell {
     isolation: isolate;
   }
-  .zadak-language-loading {
-    position: fixed;
-    top: 78px;
-    left: 50%;
-    z-index: 60;
-    display: inline-flex;
-    align-items: center;
-    gap: 7px;
-    min-height: 30px;
-    padding: 0 11px;
-    border: 1px solid rgba(22, 134, 111, .16);
-    border-radius: 999px;
-    background: rgba(255, 255, 255, .92);
-    color: #16866f;
-    box-shadow: 0 8px 22px rgba(22, 89, 66, .12);
-    pointer-events: none;
-    transform: translateX(-50%);
-    animation: zadak-language-loading-in 180ms cubic-bezier(.23, 1, .32, 1) both;
-  }
-  .dark .zadak-language-loading { border-color: rgba(141, 218, 184, .16); background: rgba(32, 49, 43, .94); color: #9edabc; }
-  .zadak-language-loading svg { animation: zadak-language-spinner 700ms linear infinite; }
-.zadak-app-shell.is-direction-changing,
-  .zadak-app-shell.is-language-changing {
-    animation: zadak-language-switch 260ms cubic-bezier(.23, 1, .32, 1) both;
-    will-change: opacity, transform;
-  }
-  @keyframes zadak-language-loading-in {
-    from { opacity: 0; transform: translateX(-50%) translateY(-5px); }
-    to { opacity: 1; transform: translateX(-50%) translateY(0); }
-  }
-  @keyframes zadak-language-spinner {
-    to { transform: rotate(360deg); }
-  }
-  @keyframes zadak-language-switch {
-    from { opacity: .84; transform: translateY(5px); }
-    55% { opacity: .97; transform: translateY(1px); }
-    to { opacity: 1; transform: translateY(0); }
-  }
-  @media (prefers-reduced-motion: no-preference) {
-    .zadak-app-shell.is-language-changing .zadak-nav-item,
-    .zadak-app-shell.is-language-changing .zadak-bottom-nav-item {
-      animation: zadak-language-item-in 220ms cubic-bezier(.23, 1, .32, 1) both;
-    }
-    .zadak-app-shell.is-language-changing .zadak-nav-item:nth-child(2),
-    .zadak-app-shell.is-language-changing .zadak-bottom-nav-item:nth-child(2) { animation-delay: 28ms; }
-    .zadak-app-shell.is-language-changing .zadak-nav-item:nth-child(3),
-    .zadak-app-shell.is-language-changing .zadak-bottom-nav-item:nth-child(3) { animation-delay: 56ms; }
-    .zadak-app-shell.is-language-changing .zadak-nav-item:nth-child(4),
-    .zadak-app-shell.is-language-changing .zadak-bottom-nav-item:nth-child(4) { animation-delay: 84ms; }
-    .zadak-app-shell.is-language-changing h1,
-    .zadak-app-shell.is-language-changing h2 {
-      animation: zadak-language-heading-in 240ms cubic-bezier(.23, 1, .32, 1) both;
-    }
-    .zadak-app-shell.is-language-changing h2 { animation-delay: 45ms; }
-  }
-  @keyframes zadak-language-item-in {
-    from { opacity: .55; transform: translateY(-4px); }
-    to { opacity: 1; transform: translateY(0); }
-  }
-  @keyframes zadak-language-heading-in {
-    from { opacity: .62; transform: translateY(4px); }
-    to { opacity: 1; transform: translateY(0); }
-  }
 
   .zadak-header {
     transition: background-color 240ms ease, border-color 240ms ease, box-shadow 240ms ease;
@@ -417,11 +354,7 @@
     .zadak-loading-card,
     .zadak-dashboard-card,
     .zadak-stat-card,
-    .zadak-mobile-menu,
-    .zadak-app-shell.is-direction-changing,
-    .zadak-app-shell.is-language-changing,
-    .zadak-language-loading,
-    .zadak-language-loading svg { transition: none; animation: none; }
+    .zadak-mobile-menu { transition: none; animation: none; }
   }
 
 
@@ -753,56 +686,6 @@
 
   @media (prefers-reduced-motion: reduce) {
     .zadak-section-dot { transition: none; }
-  }
-
-
-  @keyframes zadak-indicator-gradient {
-    from { background-position: 0% 50%; }
-    to { background-position: 100% 50%; }
-  }
-
-  @media (max-width: 639px) and (prefers-reduced-motion: no-preference) {
-    .zadak-section-indicator.is-transitioning .zadak-section-dot {
-      background: linear-gradient(90deg, #8bd6a4, #16866f, #f0bd63, #16866f, #8bd6a4);
-      background-size: 240% 100%;
-      animation: zadak-indicator-gradient 500ms cubic-bezier(.23, 1, .32, 1) both;
-    }
-
-    .zadak-section-indicator.is-transitioning .zadak-section-dot.is-active {
-      background: linear-gradient(90deg, #73c694, #087b69, #d9a84f, #087b69, #73c694);
-      background-size: 240% 100%;
-    }
-  }
-
-
-  @keyframes zadak-edge-bounce-start {
-    0%, 100% { transform: translateX(0); }
-    45% { transform: translateX(10px); }
-    72% { transform: translateX(-3px); }
-  }
-
-  @keyframes zadak-edge-bounce-end {
-    0%, 100% { transform: translateX(0); }
-    45% { transform: translateX(-10px); }
-    72% { transform: translateX(3px); }
-  }
-
-  @media (max-width: 639px) and (prefers-reduced-motion: no-preference) {
-    .zadak-view-stage.is-edge-start {
-      animation: zadak-edge-bounce-start 320ms cubic-bezier(.23, 1, .32, 1) both;
-    }
-
-    .zadak-view-stage.is-edge-end {
-      animation: zadak-edge-bounce-end 320ms cubic-bezier(.23, 1, .32, 1) both;
-    }
-
-    .zadak-section-indicator.is-bouncing-start {
-      animation: zadak-edge-bounce-start 320ms cubic-bezier(.23, 1, .32, 1) both;
-    }
-
-    .zadak-section-indicator.is-bouncing-end {
-      animation: zadak-edge-bounce-end 320ms cubic-bezier(.23, 1, .32, 1) both;
-    }
   }
 
 }

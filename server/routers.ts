@@ -4,7 +4,7 @@ import { getSessionCookieOptions } from "./_core/cookies";
 import { invokeLLM } from "./_core/llm";
 import { systemRouter } from "./_core/systemRouter";
 import { protectedProcedure, publicProcedure, router } from "./_core/trpc";
-import { clearTodayMeals, createMeal, deleteMeal, getDashboard, recordWeightLog, updateMealNutrition, updateProfile } from "./db";
+import { clearTodayMeals, createMeal, deleteMeal, getDashboard, recordWeightLog, updateProfile } from "./db";
 import { storagePut } from "./storage";
 import { TRPCError } from "@trpc/server";
 import { calculateNutritionGoals } from "./nutrition";
@@ -144,7 +144,6 @@ export const appRouter = router({
       targetDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().optional(),
       activityLevel: z.enum(["sedentary", "light", "moderate", "high"]),
       goal: z.enum(["lose", "maintain", "gain"]).default("maintain"),
-      preferredEatingMethod: z.enum(["bread", "spoon", "nothing"]).default("nothing"),
       useAiCalorieAdjustment: z.boolean().optional(),
     })).mutation(async ({ ctx, input }) => {
       const goals = input.age && input.heightCm && input.weightKg
@@ -161,32 +160,12 @@ export const appRouter = router({
       historyCalorieFilter: z.enum(["all", "under400", "400to700", "over700"]),
       historySortOrder: z.enum(["latest", "caloriesDesc"]),
     })).mutation(({ ctx, input }) => updateProfile(ctx.user.id, input)),
-    updateMealNutrition: protectedProcedure.input(z.object({ id: z.number().int().positive(), calories: z.number().int().nonnegative(), protein: z.number().int().nonnegative(), carbs: z.number().int().nonnegative(), fat: z.number().int().nonnegative(), eatingMethod: z.enum(["bread", "spoon", "nothing"]) })).mutation(({ ctx, input }) => updateMealNutrition(ctx.user.id, input.id, { calories: input.calories, protein: input.protein, carbs: input.carbs, fat: input.fat })),
     deleteMeal: protectedProcedure.input(z.object({ id: z.number().int().positive() })).mutation(({ ctx, input }) => deleteMeal(ctx.user.id, input.id)),
     clearToday: protectedProcedure.mutation(({ ctx }) => clearTodayMeals(ctx.user.id)),
-    generateFridgeRecipe: protectedProcedure.input(z.object({
-      ingredients: z.array(z.string().trim().min(1).max(80)).min(1).max(20),
-      calorieGoal: z.number().int().min(800).max(10000),
-      language: z.enum(["ar", "en", "tr"]).default("ar"),
-    })).mutation(async ({ input }) => {
-      const languageName = input.language === "en" ? "English" : input.language === "tr" ? "Turkish" : "Arabic";
-      const schema = { type: "object", properties: { title: { type: "string" }, summary: { type: "string" }, calories: { type: "integer", minimum: 0, maximum: 2000 }, protein: { type: "integer", minimum: 0, maximum: 200 }, ingredients: { type: "array", items: { type: "string" } }, steps: { type: "array", items: { type: "string" } }, shoppingList: { type: "array", items: { type: "string" } } }, required: ["title", "summary", "calories", "protein", "ingredients", "steps", "shoppingList"], additionalProperties: false } as const;
-      try {
-        const response = await invokeLLM({ model: "gemini-3.1-pro-preview", messages: [{ role: "system", content: `أنت مخطط وصفات صحية. أعد JSON فقط باللغة ${languageName}. استخدم المكونات المتوفرة قدر الإمكان، لا تقدم نصائح طبية، واجعل السعرات مناسبة لوجبة تقارب ثلث الهدف اليومي.` }, { role: "user", content: `المكونات المتوفرة: ${input.ingredients.join(", ")}. الهدف اليومي: ${input.calorieGoal} سعرة. أنشئ وصفة عملية مع سعرات تقريبية وبروتين وقائمة مشتريات فقط لما ينقص.` }], thinking: { budget_tokens: 512 }, maxTokens: 900, responseFormat: { type: "json_schema", json_schema: { name: "fridge_recipe", strict: true, schema } } });
-        const parsed = z.object({ title: z.string().min(1), summary: z.string().min(1), calories: z.number().int().nonnegative(), protein: z.number().int().nonnegative(), ingredients: z.array(z.string()), steps: z.array(z.string()), shoppingList: z.array(z.string()) }).parse(JSON.parse(getTextContent(response.choices?.[0]?.message?.content)));
-        return parsed;
-      } catch (error) {
-        console.error("[Nutrition] Fridge recipe failed:", error);
-        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "تعذر إنشاء الوصفة الآن. حاول مرة أخرى." });
-      }
-    }),
     analyzeMeal: protectedProcedure.input(z.object({
       description: z.string().trim().max(500).optional(),
       imageData: z.string().max(8_000_000).optional(),
       imageMimeType: imageMime.optional(),
-      eatingMethod: z.enum(["bread", "spoon", "nothing"]).default("nothing"),
-      portionSize: z.enum(["small", "standard", "large"]).default("standard"),
-      portionGrams: z.number().int().min(1).max(3000).optional(),
     }).refine((value) => Boolean(value.description || value.imageData), { message: "أضف وصفاً أو صورة للوجبة" })).mutation(async ({ ctx, input }) => {
       let imageUrl: string | undefined;
       let imageKey: string | undefined;
@@ -213,11 +192,8 @@ export const appRouter = router({
         "إذا لم تستطع تمييز عنصر، لا تخترع اسماً؛ استخدم وصفاً عاماً مثل مكوّن غير واضح، وخفّض confidence وأضف السبب في assumptions.",
         "إذا كانت كمية الزيت أو الصلصة غير ظاهرة، قدّرها بحذر وأذكرها في assumptions. لا تفترض أن الطبق منزوع الزيت.",
         "استخدم نطاقاً محافظاً للحصة الظاهرة، وعبّر عن عدم اليقين في confidence وassumptions. لا تقدم نصائح طبية أو تشخيصاً.",
-        `حجم الحصة الذي حدده المستخدم: ${input.portionSize === "small" ? "صغيرة (حوالي 70% من الحصة المعتادة)" : input.portionSize === "large" ? "كبيرة (حوالي 135% من الحصة المعتادة)" : "قياسية (100%)"}. اجعل الغرامات والسعرات والماكروز متناسبة معه، واذكر الحجم في وصف الحصة.`,
-        input.portionGrams ? `الوزن الدقيق الذي أدخله المستخدم هو ${input.portionGrams} غراماً. هذا الرقم يتغلب على الحجم التقريبي: وزّع الوزن على المكونات الظاهرة، واجعل مجموع غرامات المكونات قريباً منه، ثم احسب السعرات والماكروز وفقاً لذلك.` : "لم يدخل المستخدم وزناً دقيقاً؛ استخدم تقديرك البصري للحصة.",
         "اللغة العربية في mealName وsummary وitems وingredients.name وingredients.portion وassumptions.",
         input.description ? `ملاحظة المستخدم هي مصدر مهم للمعلومات غير المرئية: استخدمها لتصحيح أو استكمال الصورة، خصوصاً نوع الزيت والصلصات وطريقة الطهي وحجم الحصة، ولا تتجاهلها. ملاحظة المستخدم: ${input.description}` : "لا توجد ملاحظة نصية؛ اعتمد على الصورة واذكر الافتراضات.",
-        `طريقة تناول الوجبة التي اختارها المستخدم: ${input.eatingMethod === "bread" ? "مع الخبز" : input.eatingMethod === "spoon" ? "بالملعقة" : "بدون شيء إضافي"}. استخدمها لضبط تقدير الحصة: أضف الخبز فقط عند اختيار مع الخبز، ولا تضف مكوّناً غذائياً إضافياً عند اختيار بالملعقة أو بدون شيء، واذكر أثر الاختيار في assumptions عند الحاجة.`,
       ].join("\n");
       const content = imagePart ? [{ type: "text" as const, text: prompt }, imagePart] : prompt;
       let response;
@@ -263,8 +239,8 @@ export const appRouter = router({
       const ingredientCalories = parsed.ingredients.reduce((sum, ingredient) => sum + ingredient.calories, 0);
       const calorieMismatch = parsed.calories > 0 ? Math.abs(ingredientCalories - parsed.calories) / parsed.calories : 0;
       const adjustedConfidence = calorieMismatch > 0.35 ? Math.max(25, parsed.confidence - 15) : parsed.confidence;
-      const meal = await createMeal({ userId: ctx.user.id, mealName: parsed.mealName.slice(0, 180), description: input.description ?? null, mealType: parsed.mealType, calories: parsed.calories, protein: parsed.protein, carbs: parsed.carbs, fat: parsed.fat, confidence: adjustedConfidence, aiSummary: JSON.stringify({ summary: parsed.summary, items: parsed.items, ingredients: parsed.ingredients, assumptions: parsed.assumptions, calorieMismatch, eatingMethod: input.eatingMethod }), imageKey, imageUrl });
-      return { meal, analysis: { ...parsed, confidence: adjustedConfidence, calorieMismatch, eatingMethod: input.eatingMethod, portionSize: input.portionSize, portionGrams: input.portionGrams } };
+      const meal = await createMeal({ userId: ctx.user.id, mealName: parsed.mealName.slice(0, 180), description: input.description ?? null, mealType: parsed.mealType, calories: parsed.calories, protein: parsed.protein, carbs: parsed.carbs, fat: parsed.fat, confidence: adjustedConfidence, aiSummary: JSON.stringify({ summary: parsed.summary, items: parsed.items, ingredients: parsed.ingredients, assumptions: parsed.assumptions, calorieMismatch }), imageKey, imageUrl });
+      return { meal, analysis: { ...parsed, confidence: adjustedConfidence, calorieMismatch } };
     }),
   }),
 });
