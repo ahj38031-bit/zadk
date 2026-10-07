@@ -20,7 +20,7 @@
 }
 
 :root {
-  --background: oklch(0.98 0.01 90); /* عاجي فاتح جداً */
+  --background: oklch(0.965 0.012 90); /* أوف وايت مريح */
   --foreground: oklch(0.2 0.02 160); /* أخضر داكن جداً للنص */
   
   --primary: oklch(0.45 0.12 160); /* أخضر زادك الأساسي */
@@ -31,6 +31,9 @@
   
   --accent: oklch(0.9 0.05 160);
   --accent-foreground: oklch(0.45 0.12 160);
+
+  --warm-accent: #d49c3e;
+  --water-accent: #65b6c8;
   
   --border: oklch(0.9 0.02 160);
   --radius: 1.5rem; /* حواف مستديرة كبيرة كالأصل */
@@ -53,7 +56,7 @@
   }
 
   .zadak-home-hero {
-    background: linear-gradient(118deg, #075c4d 0%, #087b69 47%, #0b6e61 100%);
+    background: linear-gradient(118deg, #064f45 0%, #087b69 46%, #42a678 100%);
   }
 
   .zadak-reveal {
@@ -147,11 +150,13 @@
   }
 
   .zadak-app-shell {
+    background-color: #f4f5f0;
     background-image: radial-gradient(circle at 8% 0%, rgba(161, 211, 161, .16), transparent 27rem), radial-gradient(circle at 96% 22%, rgba(240, 197, 111, .10), transparent 24rem);
   }
 
   .zadak-header {
-    box-shadow: 0 10px 30px rgba(35, 67, 51, .035);
+    border-color: rgba(203, 220, 204, .8) !important;
+    box-shadow: 0 12px 32px rgba(35, 67, 51, .055);
   }
 
   .zadak-nav-item {
@@ -187,6 +192,8 @@
   }
 
   .zadak-primary-button {
+    background-image: linear-gradient(135deg, #087b69, #2c9b78);
+    box-shadow: 0 10px 22px rgba(8, 123, 105, .16);
     transition: transform 180ms cubic-bezier(.23, 1, .32, 1), box-shadow 180ms ease, background-color 180ms ease;
   }
 
@@ -206,6 +213,8 @@
 
   .zadak-feature-card {
     position: relative;
+    border: 1px solid rgba(224, 235, 224, .8);
+    border-radius: 1.5rem;
     transition: transform 180ms cubic-bezier(.23, 1, .32, 1), background-color 180ms ease, box-shadow 180ms ease;
   }
 
@@ -686,6 +695,75 @@
 
   @media (prefers-reduced-motion: reduce) {
     .zadak-section-dot { transition: none; }
+  }
+
+  /* Visual refresh: quiet depth, complementary accents, and mobile priority */
+  .zadak-dashboard-card,
+  .zadak-stat-card,
+  .zadak-meal-card,
+  .zadak-feature-card {
+    border-radius: 1.5rem;
+    box-shadow: 0 10px 28px rgba(35, 67, 51, .055);
+  }
+
+  .zadak-meal-card {
+    border: 1px solid rgba(226, 236, 226, .82);
+  }
+
+  .zadak-dashboard-card:hover,
+  .zadak-stat-card:hover,
+  .zadak-meal-card:hover,
+  .zadak-feature-card:hover {
+    box-shadow: 0 16px 34px rgba(35, 67, 51, .10);
+  }
+
+  .zadak-home-hero .zadak-primary-button {
+    background-image: linear-gradient(135deg, #fffdf6, #fff5d9);
+    color: #087b69;
+    box-shadow: 0 12px 28px rgba(0, 0, 0, .14);
+  }
+
+  .zadak-home-hero .zadak-primary-button:hover {
+    box-shadow: 0 16px 34px rgba(0, 0, 0, .20);
+  }
+
+  .zadak-app-shell [class*="bg-[#65b6c8"] {
+    color: #398fa5;
+  }
+
+  @media (max-width: 639px) {
+    .zadak-bottom-nav-item:nth-child(2) {
+      transform: translateY(-5px);
+    }
+
+    .zadak-bottom-nav-item:nth-child(2) .zadak-bottom-nav-icon {
+      width: 46px;
+      height: 34px;
+      color: #fff;
+      background: linear-gradient(135deg, #087b69, #42a678);
+      box-shadow: 0 8px 18px rgba(8, 123, 105, .25);
+    }
+
+    .zadak-bottom-nav-item:nth-child(2) span:last-child {
+      color: #087b69;
+      font-weight: 900;
+    }
+
+    .zadak-bottom-nav-item:nth-child(2):active {
+      transform: translateY(-5px) scale(.95);
+    }
+  }
+
+  .dark .zadak-dashboard-card,
+  .dark .zadak-stat-card,
+  .dark .zadak-meal-card,
+  .dark .zadak-feature-card {
+    border-color: rgba(255, 255, 255, .07);
+    box-shadow: 0 12px 30px rgba(0, 0, 0, .15);
+  }
+
+  .dark .zadak-bottom-nav-item:nth-child(2) span:last-child {
+    color: #9edabc;
   }
 
 }

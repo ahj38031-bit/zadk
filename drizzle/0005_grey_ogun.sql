@@ -1,0 +1,1 @@
+ALTER TABLE `profiles` ADD `preferredEatingMethod` enum('bread','spoon','nothing') DEFAULT 'nothing' NOT NULL;
