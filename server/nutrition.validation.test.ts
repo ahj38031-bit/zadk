@@ -5,6 +5,7 @@ import { calculateNutritionGoals } from "./nutrition";
 import { getProgressMotivationStatus } from "../shared/progress";
 import { buildNutritionComparison } from "../shared/nutrition-chart";
 import { filterHistoryMeals, sortHistoryMeals } from "../shared/history-filters";
+import { plateSizeFactor, scaleByPlateSize } from "../shared/plate-size";
 
 type AuthenticatedUser = NonNullable<TrpcContext["user"]>;
 
@@ -164,5 +165,16 @@ describe("nutrition input validation", () => {
       historyCalorieFilter: "all",
       historySortOrder: "latest",
     })).rejects.toMatchObject({ code: "BAD_REQUEST" });
+  });
+
+  it("scales nutrition up and down relative to the original plate", () => {
+    expect(scaleByPlateSize(400, "medium", "small")).toBe(300);
+    expect(scaleByPlateSize(400, "medium", "large")).toBe(500);
+    expect(scaleByPlateSize(400, "small", "large")).toBe(667);
+  });
+
+  it("keeps the medium plate as the neutral baseline", () => {
+    expect(plateSizeFactor("medium")).toBe(1);
+    expect(scaleByPlateSize(125, "medium", "medium")).toBe(125);
   });
 });

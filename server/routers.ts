@@ -166,6 +166,7 @@ export const appRouter = router({
       description: z.string().trim().max(500).optional(),
       imageData: z.string().max(8_000_000).optional(),
       imageMimeType: imageMime.optional(),
+      plateSize: z.enum(["small", "medium", "large"]).default("medium"),
     }).refine((value) => Boolean(value.description || value.imageData), { message: "أضف وصفاً أو صورة للوجبة" })).mutation(async ({ ctx, input }) => {
       let imageUrl: string | undefined;
       let imageKey: string | undefined;
@@ -187,6 +188,7 @@ export const appRouter = router({
         "حلّل هذه الوجبة كخبير رؤية غذائية. أعد JSON فقط مطابقاً للمخطط، ولا تكتب Markdown.",
         "الهدف هو أفضل تقدير عملي للسعرات والماكروز، وليس مجرد تسمية الطبق.",
         "افحص الصورة منهجياً: حدّد كل عنصر ظاهر، طريقة الطهي، الصلصات والزيوت والإضافات المحتملة، ثم قدّر حجم الحصة باستخدام حجم الطبق والأدوات والمقارنة البصرية.",
+        `اختيار المستخدم لحجم الطبق هو: ${input.plateSize === "small" ? "صغير" : input.plateSize === "large" ? "كبير" : "متوسط"}. استخدمه كقرينة إضافية للحصة، ولا تتجاهله عند تقدير الغرامات والسعرات.`,
         "قسّم الوجبة إلى ingredients منفصلة. لكل عنصر اذكر اسماً عربياً، حصة بشرية مفهومة، غرامات تقريبية، سعرات وبروتين وكربوهيدرات ودهون وثقة مستقلة.",
         "اجعل مجموع العناصر قريباً جداً من إجمالي الوجبة. تحقق أن السعرات منطقية مع الماكروز (4*البروتين + 4*الكربوهيدرات + 9*الدهون)، مع السماح باختلاف بسيط بسبب الألياف والماء.",
         "إذا لم تستطع تمييز عنصر، لا تخترع اسماً؛ استخدم وصفاً عاماً مثل مكوّن غير واضح، وخفّض confidence وأضف السبب في assumptions.",
