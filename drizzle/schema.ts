@@ -51,6 +51,19 @@ export const meals = mysqlTable("meals", {
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 
+export const frequentMeals = mysqlTable("frequentMeals", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  name: varchar("name", { length: 180 }).notNull(),
+  itemsSnapshot: text("itemsSnapshot").notNull(),
+  mealType: mysqlEnum("mealType", ["breakfast", "lunch", "dinner", "snack"]).default("snack").notNull(),
+  calories: int("calories").default(0).notNull(),
+  protein: int("protein").default(0).notNull(),
+  carbs: int("carbs").default(0).notNull(),
+  fat: int("fat").default(0).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
 export const weightLogs = mysqlTable("weightLogs", {
   id: int("id").autoincrement().primaryKey(),
   userId: int("userId").notNull(),
@@ -62,4 +75,5 @@ export type User = typeof users.$inferSelect;
 export type InsertUser = typeof users.$inferInsert;
 export type Profile = typeof profiles.$inferSelect;
 export type Meal = typeof meals.$inferSelect;
+export type FrequentMeal = typeof frequentMeals.$inferSelect;
 export type WeightLog = typeof weightLogs.$inferSelect;

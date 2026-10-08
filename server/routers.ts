@@ -4,12 +4,13 @@ import { getSessionCookieOptions } from "./_core/cookies";
 import { invokeLLM } from "./_core/llm";
 import { systemRouter } from "./_core/systemRouter";
 import { protectedProcedure, publicProcedure, router } from "./_core/trpc";
-import { clearTodayMeals, createMeal, deleteMeal, getDashboard, recordWeightLog, updateProfile } from "./db";
+import { clearTodayMeals, createFrequentMeal, createMeal, deleteFrequentMeal, deleteMeal, getDashboard, getFrequentMeal, recordWeightLog, updateProfile } from "./db";
 import { storagePut } from "./storage";
 import { TRPCError } from "@trpc/server";
 import { calculateNutritionGoals } from "./nutrition";
 
 const imageMime = z.enum(["image/jpeg", "image/png", "image/webp"]);
+const frequentItemSchema = z.object({ name: z.string().min(1).max(180), portion: z.string().max(180), grams: z.number().int().nonnegative(), calories: z.number().int().nonnegative(), protein: z.number().int().nonnegative(), carbs: z.number().int().nonnegative(), fat: z.number().int().nonnegative(), confidence: z.number().int().min(0).max(100) });
 
 const analysisSchema = {
   type: "object",
@@ -160,6 +161,30 @@ export const appRouter = router({
       historyCalorieFilter: z.enum(["all", "under400", "400to700", "over700"]),
       historySortOrder: z.enum(["latest", "caloriesDesc"]),
     })).mutation(({ ctx, input }) => updateProfile(ctx.user.id, input)),
+    createFrequentMeal: protectedProcedure.input(z.object({
+      name: z.string().trim().min(1).max(180),
+      itemsSnapshot: z.string().max(20_000),
+      mealType: z.enum(["breakfast", "lunch", "dinner", "snack"]),
+      calories: z.number().int().nonnegative().max(20_000),
+      protein: z.number().int().nonnegative().max(2_000),
+      carbs: z.number().int().nonnegative().max(2_000),
+      fat: z.number().int().nonnegative().max(2_000),
+    })).mutation(async ({ ctx, input }) => {
+      try {
+        const items = z.array(frequentItemSchema).max(100).parse(JSON.parse(input.itemsSnapshot));
+        return createFrequentMeal({ ...input, userId: ctx.user.id, itemsSnapshot: JSON.stringify(items) });
+      } catch {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "بيانات الوجبة المتكررة غير صالحة." });
+      }
+    }),
+    deleteFrequentMeal: protectedProcedure.input(z.object({ id: z.number().int().positive() })).mutation(({ ctx, input }) => deleteFrequentMeal(ctx.user.id, input.id)),
+    logFrequentMeal: protectedProcedure.input(z.object({ id: z.number().int().positive(), mealType: z.enum(["breakfast", "lunch", "dinner", "snack"]) })).mutation(async ({ ctx, input }) => {
+      const frequentMeal = await getFrequentMeal(ctx.user.id, input.id);
+      if (!frequentMeal) throw new TRPCError({ code: "NOT_FOUND", message: "الوجبة المتكررة غير موجودة." });
+      let items: unknown;
+      try { items = z.array(frequentItemSchema).max(100).parse(JSON.parse(frequentMeal.itemsSnapshot)); } catch { throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "تعذر قراءة مكونات الوجبة المتكررة." }); }
+      return createMeal({ userId: ctx.user.id, mealName: frequentMeal.name, description: "وجبة متكررة", mealType: input.mealType, calories: frequentMeal.calories, protein: frequentMeal.protein, carbs: frequentMeal.carbs, fat: frequentMeal.fat, confidence: 85, aiSummary: JSON.stringify({ source: "frequent", items }) });
+    }),
     deleteMeal: protectedProcedure.input(z.object({ id: z.number().int().positive() })).mutation(({ ctx, input }) => deleteMeal(ctx.user.id, input.id)),
     clearToday: protectedProcedure.mutation(({ ctx }) => clearTodayMeals(ctx.user.id)),
     analyzeMeal: protectedProcedure.input(z.object({

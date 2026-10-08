@@ -167,6 +167,24 @@ describe("nutrition input validation", () => {
     })).rejects.toMatchObject({ code: "BAD_REQUEST" });
   });
 
+  it("rejects an invalid frequent meal snapshot before database insertion", async () => {
+    const caller = appRouter.createCaller(createContext());
+    await expect(caller.nutrition.createFrequentMeal({
+      name: "وجبة تجريبية",
+      itemsSnapshot: JSON.stringify([{ name: "رز", grams: -10 }]),
+      mealType: "lunch",
+      calories: 500,
+      protein: 25,
+      carbs: 60,
+      fat: 15,
+    })).rejects.toMatchObject({ code: "BAD_REQUEST" });
+  });
+
+  it("requires a positive owned frequent meal id when logging", async () => {
+    const caller = appRouter.createCaller(createContext());
+    await expect(caller.nutrition.logFrequentMeal({ id: 0, mealType: "dinner" })).rejects.toMatchObject({ code: "BAD_REQUEST" });
+  });
+
   it("scales nutrition up and down relative to the original plate", () => {
     expect(scaleByPlateSize(400, "medium", "small")).toBe(300);
     expect(scaleByPlateSize(400, "medium", "large")).toBe(500);

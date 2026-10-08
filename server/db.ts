@@ -1,6 +1,6 @@
 import { and, desc, eq, gte, lt } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { InsertUser, Meal, Profile, WeightLog, meals, profiles, users, weightLogs } from "../drizzle/schema";
+import { FrequentMeal, InsertUser, Meal, Profile, WeightLog, frequentMeals, meals, profiles, users, weightLogs } from "../drizzle/schema";
 import { ENV } from "./_core/env";
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -84,6 +84,31 @@ export async function createMeal(data: typeof meals.$inferInsert) {
   return created[0];
 }
 
+export async function getFrequentMeals(userId: number, limit = 30): Promise<FrequentMeal[]> {
+  const db = requireDb(await getDb());
+  return db.select().from(frequentMeals).where(eq(frequentMeals.userId, userId)).orderBy(desc(frequentMeals.createdAt)).limit(limit);
+}
+
+export async function getFrequentMeal(userId: number, frequentMealId: number) {
+  const db = requireDb(await getDb());
+  const result = await db.select().from(frequentMeals).where(and(eq(frequentMeals.id, frequentMealId), eq(frequentMeals.userId, userId))).limit(1);
+  return result[0];
+}
+
+export async function createFrequentMeal(data: typeof frequentMeals.$inferInsert) {
+  const db = requireDb(await getDb());
+  const result = await db.insert(frequentMeals).values(data);
+  const created = await db.select().from(frequentMeals).where(eq(frequentMeals.id, result[0].insertId)).limit(1);
+  if (!created[0]) throw new Error("Frequent meal could not be created");
+  return created[0];
+}
+
+export async function deleteFrequentMeal(userId: number, frequentMealId: number) {
+  const db = requireDb(await getDb());
+  await db.delete(frequentMeals).where(and(eq(frequentMeals.id, frequentMealId), eq(frequentMeals.userId, userId)));
+  return { success: true } as const;
+}
+
 export async function deleteMeal(userId: number, mealId: number) {
   const db = requireDb(await getDb());
   await db.delete(meals).where(and(eq(meals.id, mealId), eq(meals.userId, userId)));
@@ -110,11 +135,11 @@ export async function getWeightLogs(userId: number, limit = 90): Promise<WeightL
   return db.select().from(weightLogs).where(eq(weightLogs.userId, userId)).orderBy(desc(weightLogs.loggedAt)).limit(limit);
 }
 
-export type DashboardData = { profile: Profile; meals: Meal[]; weightLogs: WeightLog[] };
+export type DashboardData = { profile: Profile; meals: Meal[]; weightLogs: WeightLog[]; frequentMeals: FrequentMeal[] };
 
 export async function getDashboard(userId: number): Promise<DashboardData> {
   const profile = await getOrCreateProfile(userId);
   const logs = await getWeightLogs(userId);
   const weightLogs = logs.length || profile.weightKg == null ? logs : [{ id: 0, userId, weightKg: profile.weightKg, loggedAt: profile.updatedAt }];
-  return { profile, meals: await getMeals(userId), weightLogs };
+  return { profile, meals: await getMeals(userId), weightLogs, frequentMeals: await getFrequentMeals(userId) };
 }
