@@ -6,6 +6,8 @@ import { getProgressMotivationStatus } from "../shared/progress";
 import { buildNutritionComparison } from "../shared/nutrition-chart";
 import { filterHistoryMeals, sortHistoryMeals } from "../shared/history-filters";
 import { plateSizeFactor, scaleByPlateSize } from "../shared/plate-size";
+import { normalizeBarcode, scaleBarcodeNutrition } from "../shared/barcode-nutrition";
+import { buildNutritionInsights } from "../shared/nutrition-insights";
 
 type AuthenticatedUser = NonNullable<TrpcContext["user"]>;
 
@@ -183,6 +185,32 @@ describe("nutrition input validation", () => {
   it("requires a positive owned frequent meal id when logging", async () => {
     const caller = appRouter.createCaller(createContext());
     await expect(caller.nutrition.logFrequentMeal({ id: 0, mealType: "dinner" })).rejects.toMatchObject({ code: "BAD_REQUEST" });
+  });
+
+  it("normalizes barcode input and scales nutrition by serving grams", () => {
+    expect(normalizeBarcode(" 3017-6240-10701 ")).toBe("3017624010701");
+    expect(normalizeBarcode("abc-123")).toBeNull();
+    expect(scaleBarcodeNutrition({ calories: 500, protein: 10, carbs: 50, fat: 20, fiber: 5, sugar: 25, sodium: 300 }, 50)).toEqual({ calories: 250, protein: 5, carbs: 25, fat: 10, fiber: 2.5, sugar: 12.5, sodium: 150 });
+  });
+
+  it("returns a safe invalid result for malformed barcode lookups", async () => {
+    const caller = appRouter.createCaller(createContext());
+    await expect(caller.nutrition.lookupBarcode({ barcode: "abcdefgh" })).resolves.toMatchObject({ kind: "invalid" });
+  });
+
+  it("rejects barcode meal writes with an invalid barcode", async () => {
+    const caller = appRouter.createCaller(createContext());
+    await expect(caller.nutrition.saveBarcodeMeal({ name: "منتج تجريبي", barcode: "123", mealType: "snack", servingGrams: 30, calories: 100, protein: 2, carbs: 10, fat: 3, fiber: 1, sugar: 4, sodium: 20 })).rejects.toMatchObject({ code: "BAD_REQUEST" });
+  });
+
+  it("flags high-risk nutrition signals and produces practical alternatives", () => {
+    const insights = buildNutritionInsights({ mealName: "مكبوس رز مقلي", calories: 820, fat: 36, sugar: 28, sodium: 920 });
+    expect(insights.alerts).toEqual(["highSugar", "highFat", "highSodium", "highCalories"]);
+    expect(insights.alternatives).toEqual(["reduceOil", "swapFried", "swapRice", "reduceSugar", "smallerPortion"]);
+  });
+
+  it("keeps insight cards quiet for a balanced meal", () => {
+    expect(buildNutritionInsights({ mealName: "دجاج مشوي وخضار", calories: 420, fat: 12, sugar: 6, sodium: 400 })).toEqual({ alerts: [], alternatives: [] });
   });
 
   it("scales nutrition up and down relative to the original plate", () => {

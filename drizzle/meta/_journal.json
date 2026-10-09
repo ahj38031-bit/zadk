@@ -50,6 +50,13 @@
       "when": 1791493641216,
       "tag": "0006_wild_mimic",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "5",
+      "when": 1791494497246,
+      "tag": "0007_crazy_moira_mactaggert",
+      "breakpoints": true
     }
   ]
 }

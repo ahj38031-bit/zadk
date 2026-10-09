@@ -44,6 +44,9 @@ export const meals = mysqlTable("meals", {
   protein: int("protein").default(0).notNull(),
   carbs: int("carbs").default(0).notNull(),
   fat: int("fat").default(0).notNull(),
+  fiber: int("fiber").default(0).notNull(),
+  sugar: int("sugar").default(0).notNull(),
+  sodium: int("sodium").default(0).notNull(),
   confidence: int("confidence").default(0).notNull(),
   aiSummary: text("aiSummary"),
   imageKey: varchar("imageKey", { length: 512 }),
@@ -61,6 +64,9 @@ export const frequentMeals = mysqlTable("frequentMeals", {
   protein: int("protein").default(0).notNull(),
   carbs: int("carbs").default(0).notNull(),
   fat: int("fat").default(0).notNull(),
+  fiber: int("fiber").default(0).notNull(),
+  sugar: int("sugar").default(0).notNull(),
+  sodium: int("sodium").default(0).notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 

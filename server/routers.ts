@@ -8,9 +8,10 @@ import { clearTodayMeals, createFrequentMeal, createMeal, deleteFrequentMeal, de
 import { storagePut } from "./storage";
 import { TRPCError } from "@trpc/server";
 import { calculateNutritionGoals } from "./nutrition";
+import { lookupOpenFoodFacts } from "./open-food-facts";
 
 const imageMime = z.enum(["image/jpeg", "image/png", "image/webp"]);
-const frequentItemSchema = z.object({ name: z.string().min(1).max(180), portion: z.string().max(180), grams: z.number().int().nonnegative(), calories: z.number().int().nonnegative(), protein: z.number().int().nonnegative(), carbs: z.number().int().nonnegative(), fat: z.number().int().nonnegative(), confidence: z.number().int().min(0).max(100) });
+const frequentItemSchema = z.object({ name: z.string().min(1).max(180), portion: z.string().max(180), grams: z.number().int().nonnegative(), calories: z.number().int().nonnegative(), protein: z.number().int().nonnegative(), carbs: z.number().int().nonnegative(), fat: z.number().int().nonnegative(), fiber: z.number().int().nonnegative().optional().default(0), sugar: z.number().int().nonnegative().optional().default(0), sodium: z.number().int().nonnegative().optional().default(0), confidence: z.number().int().min(0).max(100) });
 
 const analysisSchema = {
   type: "object",
@@ -21,6 +22,9 @@ const analysisSchema = {
     protein: { type: "integer", minimum: 0 },
     carbs: { type: "integer", minimum: 0 },
     fat: { type: "integer", minimum: 0 },
+    fiber: { type: "integer", minimum: 0 },
+    sugar: { type: "integer", minimum: 0 },
+    sodium: { type: "integer", minimum: 0 },
     confidence: { type: "integer", minimum: 0, maximum: 100 },
     summary: { type: "string", description: "One concise explanation in Arabic" },
     items: { type: "array", items: { type: "string" }, description: "Short list of detected foods" },
@@ -37,15 +41,18 @@ const analysisSchema = {
           protein: { type: "integer", minimum: 0 },
           carbs: { type: "integer", minimum: 0 },
           fat: { type: "integer", minimum: 0 },
+          fiber: { type: "integer", minimum: 0 },
+          sugar: { type: "integer", minimum: 0 },
+          sodium: { type: "integer", minimum: 0 },
           confidence: { type: "integer", minimum: 0, maximum: 100 },
         },
-        required: ["name", "portion", "grams", "calories", "protein", "carbs", "fat", "confidence"],
+        required: ["name", "portion", "grams", "calories", "protein", "carbs", "fat", "fiber", "sugar", "sodium", "confidence"],
         additionalProperties: false,
       },
     },
     assumptions: { type: "array", items: { type: "string" }, description: "Important assumptions or ambiguities" },
   },
-  required: ["mealName", "mealType", "calories", "protein", "carbs", "fat", "confidence", "summary", "items", "ingredients", "assumptions"],
+  required: ["mealName", "mealType", "calories", "protein", "carbs", "fat", "fiber", "sugar", "sodium", "confidence", "summary", "items", "ingredients", "assumptions"],
   additionalProperties: false,
 } as const;
 
@@ -169,6 +176,9 @@ export const appRouter = router({
       protein: z.number().int().nonnegative().max(2_000),
       carbs: z.number().int().nonnegative().max(2_000),
       fat: z.number().int().nonnegative().max(2_000),
+      fiber: z.number().int().nonnegative().max(2_000).default(0),
+      sugar: z.number().int().nonnegative().max(2_000).default(0),
+      sodium: z.number().int().nonnegative().max(100_000).default(0),
     })).mutation(async ({ ctx, input }) => {
       try {
         const items = z.array(frequentItemSchema).max(100).parse(JSON.parse(input.itemsSnapshot));
@@ -183,8 +193,37 @@ export const appRouter = router({
       if (!frequentMeal) throw new TRPCError({ code: "NOT_FOUND", message: "الوجبة المتكررة غير موجودة." });
       let items: unknown;
       try { items = z.array(frequentItemSchema).max(100).parse(JSON.parse(frequentMeal.itemsSnapshot)); } catch { throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "تعذر قراءة مكونات الوجبة المتكررة." }); }
-      return createMeal({ userId: ctx.user.id, mealName: frequentMeal.name, description: "وجبة متكررة", mealType: input.mealType, calories: frequentMeal.calories, protein: frequentMeal.protein, carbs: frequentMeal.carbs, fat: frequentMeal.fat, confidence: 85, aiSummary: JSON.stringify({ source: "frequent", items }) });
+      return createMeal({ userId: ctx.user.id, mealName: frequentMeal.name, description: "وجبة متكررة", mealType: input.mealType, calories: frequentMeal.calories, protein: frequentMeal.protein, carbs: frequentMeal.carbs, fat: frequentMeal.fat, fiber: frequentMeal.fiber, sugar: frequentMeal.sugar, sodium: frequentMeal.sodium, confidence: 85, aiSummary: JSON.stringify({ source: "frequent", items }) });
     }),
+    lookupBarcode: protectedProcedure.input(z.object({ barcode: z.string().min(8).max(32) })).query(({ input }) => lookupOpenFoodFacts(input.barcode)),
+    saveBarcodeMeal: protectedProcedure.input(z.object({
+      name: z.string().trim().min(1).max(180),
+      brand: z.string().trim().max(180).nullable().optional(),
+      mealType: z.enum(["breakfast", "lunch", "dinner", "snack"]),
+      barcode: z.string().regex(/^\d{8,14}$/),
+      servingGrams: z.number().int().min(1).max(5000),
+      calories: z.number().int().nonnegative().max(20_000),
+      protein: z.number().nonnegative().max(2_000),
+      carbs: z.number().nonnegative().max(2_000),
+      fat: z.number().nonnegative().max(2_000),
+      fiber: z.number().nonnegative().max(2_000),
+      sugar: z.number().nonnegative().max(2_000),
+      sodium: z.number().int().nonnegative().max(100_000),
+    })).mutation(({ ctx, input }) => createMeal({
+      userId: ctx.user.id,
+      mealName: input.name,
+      description: input.brand ? `${input.brand} · باركود ${input.barcode}` : `باركود ${input.barcode}`,
+      mealType: input.mealType,
+      calories: input.calories,
+      protein: Math.round(input.protein),
+      carbs: Math.round(input.carbs),
+      fat: Math.round(input.fat),
+      fiber: Math.round(input.fiber),
+      sugar: Math.round(input.sugar),
+      sodium: input.sodium,
+      confidence: 100,
+      aiSummary: JSON.stringify({ source: "open-food-facts", barcode: input.barcode, servingGrams: input.servingGrams, brand: input.brand ?? null }),
+    })),
     deleteMeal: protectedProcedure.input(z.object({ id: z.number().int().positive() })).mutation(({ ctx, input }) => deleteMeal(ctx.user.id, input.id)),
     clearToday: protectedProcedure.mutation(({ ctx }) => clearTodayMeals(ctx.user.id)),
     analyzeMeal: protectedProcedure.input(z.object({
@@ -214,7 +253,8 @@ export const appRouter = router({
         "الهدف هو أفضل تقدير عملي للسعرات والماكروز، وليس مجرد تسمية الطبق.",
         "افحص الصورة منهجياً: حدّد كل عنصر ظاهر، طريقة الطهي، الصلصات والزيوت والإضافات المحتملة، ثم قدّر حجم الحصة باستخدام حجم الطبق والأدوات والمقارنة البصرية.",
         `اختيار المستخدم لحجم الطبق هو: ${input.plateSize === "small" ? "صغير" : input.plateSize === "large" ? "كبير" : "متوسط"}. استخدمه كقرينة إضافية للحصة، ولا تتجاهله عند تقدير الغرامات والسعرات.`,
-        "قسّم الوجبة إلى ingredients منفصلة. لكل عنصر اذكر اسماً عربياً، حصة بشرية مفهومة، غرامات تقريبية، سعرات وبروتين وكربوهيدرات ودهون وثقة مستقلة.",
+      "قسّم الوجبة إلى ingredients منفصلة. لكل عنصر اذكر اسماً عربياً، حصة بشرية مفهومة، غرامات تقريبية، سعرات وبروتين وكربوهيدرات ودهون وثقة مستقلة.",
+        "أعد أيضاً الألياف والسكريات والصوديوم بالجرام/الميليجرام للوجبة ولكل مكوّن، واجعلها أرقاماً صحيحة غير سالبة.",
         "اجعل مجموع العناصر قريباً جداً من إجمالي الوجبة. تحقق أن السعرات منطقية مع الماكروز (4*البروتين + 4*الكربوهيدرات + 9*الدهون)، مع السماح باختلاف بسيط بسبب الألياف والماء.",
         "إذا لم تستطع تمييز عنصر، لا تخترع اسماً؛ استخدم وصفاً عاماً مثل مكوّن غير واضح، وخفّض confidence وأضف السبب في assumptions.",
         "إذا كانت كمية الزيت أو الصلصة غير ظاهرة، قدّرها بحذر وأذكرها في assumptions. لا تفترض أن الطبق منزوع الزيت.",
@@ -248,16 +288,19 @@ export const appRouter = router({
         protein: number;
         carbs: number;
         fat: number;
+        fiber: number;
+        sugar: number;
+        sodium: number;
         confidence: number;
         summary: string;
         items: string[];
-        ingredients: Array<{ name: string; portion: string; grams: number; calories: number; protein: number; carbs: number; fat: number; confidence: number }>;
+        ingredients: Array<{ name: string; portion: string; grams: number; calories: number; protein: number; carbs: number; fat: number; fiber: number; sugar: number; sodium: number; confidence: number }>;
         assumptions: string[];
       };
       let parsed: MealAnalysis;
       try {
         parsed = z.object({
-          mealName: z.string(), mealType: z.enum(["breakfast", "lunch", "dinner", "snack"] as const), calories: z.number().int().nonnegative(), protein: z.number().int().nonnegative(), carbs: z.number().int().nonnegative(), fat: z.number().int().nonnegative(), confidence: z.number().int().min(0).max(100), summary: z.string(), items: z.array(z.string()), ingredients: z.array(z.object({ name: z.string(), portion: z.string(), grams: z.number().int().nonnegative(), calories: z.number().int().nonnegative(), protein: z.number().int().nonnegative(), carbs: z.number().int().nonnegative(), fat: z.number().int().nonnegative(), confidence: z.number().int().min(0).max(100) })), assumptions: z.array(z.string()),
+          mealName: z.string(), mealType: z.enum(["breakfast", "lunch", "dinner", "snack"] as const), calories: z.number().int().nonnegative(), protein: z.number().int().nonnegative(), carbs: z.number().int().nonnegative(), fat: z.number().int().nonnegative(), fiber: z.number().int().nonnegative(), sugar: z.number().int().nonnegative(), sodium: z.number().int().nonnegative(), confidence: z.number().int().min(0).max(100), summary: z.string(), items: z.array(z.string()), ingredients: z.array(z.object({ name: z.string(), portion: z.string(), grams: z.number().int().nonnegative(), calories: z.number().int().nonnegative(), protein: z.number().int().nonnegative(), carbs: z.number().int().nonnegative(), fat: z.number().int().nonnegative(), fiber: z.number().int().nonnegative(), sugar: z.number().int().nonnegative(), sodium: z.number().int().nonnegative(), confidence: z.number().int().min(0).max(100) })), assumptions: z.array(z.string()),
         }).parse(JSON.parse(raw));
       } catch {
         throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "وصلت نتيجة غير مكتملة من محلل الوجبات." });
@@ -266,7 +309,7 @@ export const appRouter = router({
       const ingredientCalories = parsed.ingredients.reduce((sum, ingredient) => sum + ingredient.calories, 0);
       const calorieMismatch = parsed.calories > 0 ? Math.abs(ingredientCalories - parsed.calories) / parsed.calories : 0;
       const adjustedConfidence = calorieMismatch > 0.35 ? Math.max(25, parsed.confidence - 15) : parsed.confidence;
-      const meal = await createMeal({ userId: ctx.user.id, mealName: parsed.mealName.slice(0, 180), description: input.description ?? null, mealType: parsed.mealType, calories: parsed.calories, protein: parsed.protein, carbs: parsed.carbs, fat: parsed.fat, confidence: adjustedConfidence, aiSummary: JSON.stringify({ summary: parsed.summary, items: parsed.items, ingredients: parsed.ingredients, assumptions: parsed.assumptions, calorieMismatch }), imageKey, imageUrl });
+      const meal = await createMeal({ userId: ctx.user.id, mealName: parsed.mealName.slice(0, 180), description: input.description ?? null, mealType: parsed.mealType, calories: parsed.calories, protein: parsed.protein, carbs: parsed.carbs, fat: parsed.fat, fiber: parsed.fiber, sugar: parsed.sugar, sodium: parsed.sodium, confidence: adjustedConfidence, aiSummary: JSON.stringify({ summary: parsed.summary, items: parsed.items, ingredients: parsed.ingredients, assumptions: parsed.assumptions, calorieMismatch }), imageKey, imageUrl });
       return { meal, analysis: { ...parsed, confidence: adjustedConfidence, calorieMismatch } };
     }),
   }),
