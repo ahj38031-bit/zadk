@@ -37,7 +37,7 @@ STORAGE_PROVIDER=local
 STORAGE_DIR=storage/uploads
 ```
 
-The complete variable catalog, including optional Manus and S3 settings, is in [`env.example`](./env.example). Copy it to `.env` locally; never commit a real `.env` file or paste keys into source code. The source workspace protects dot-prefixed environment files, so the downloadable template intentionally uses the equivalent safe filename `env.example`.
+The complete variable catalog, including optional Manus and S3 settings, is in [`.env.example`](./.env.example). Copy it to `.env` locally; never commit a real `.env` file or paste keys into source code. The source workspace protects dot-prefixed environment files, so its editable equivalent is named `env.example`; the downloadable ZIP contains the requested `.env.example` filename.
 
 > **Persistent storage note:** Render's ephemeral filesystem can lose local uploads after a redeploy or restart. For production image persistence, use `STORAGE_PROVIDER=s3` with an S3-compatible bucket. The database should also be an external managed MySQL/TiDB service.
 
