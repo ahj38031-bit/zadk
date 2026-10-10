@@ -1,0 +1,37 @@
+services:
+  - type: web
+    name: zadakai
+    runtime: node
+    plan: free
+    buildCommand: corepack enable && pnpm install --frozen-lockfile && pnpm build
+    startCommand: pnpm start
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_VERSION
+        value: 22.14.0
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        sync: false
+      - key: JWT_SECRET
+        generateValue: true
+      - key: AUTH_PROVIDER
+        value: local
+      - key: VITE_AUTH_PROVIDER
+        value: local
+      - key: LOCAL_AUTH_USER_ID
+        value: local-owner
+      - key: LOCAL_AUTH_USER_NAME
+        sync: false
+      - key: LOCAL_AUTH_USER_EMAIL
+        sync: false
+      - key: LLM_API_URL
+        value: https://api.openai.com
+      - key: LLM_API_KEY
+        sync: false
+      - key: LLM_MODEL
+        value: gpt-4o-mini
+      - key: STORAGE_PROVIDER
+        value: local
+      - key: STORAGE_DIR
+        value: storage/uploads

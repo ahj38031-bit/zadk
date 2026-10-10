@@ -9,6 +9,7 @@ import { storagePut } from "./storage";
 import { TRPCError } from "@trpc/server";
 import { calculateNutritionGoals } from "./nutrition";
 import { lookupOpenFoodFacts } from "./open-food-facts";
+import { ENV } from "./_core/env";
 
 const imageMime = z.enum(["image/jpeg", "image/png", "image/webp"]);
 const frequentItemSchema = z.object({ name: z.string().min(1).max(180), portion: z.string().max(180), grams: z.number().int().nonnegative(), calories: z.number().int().nonnegative(), protein: z.number().int().nonnegative(), carbs: z.number().int().nonnegative(), fat: z.number().int().nonnegative(), fiber: z.number().int().nonnegative().optional().default(0), sugar: z.number().int().nonnegative().optional().default(0), sodium: z.number().int().nonnegative().optional().default(0), confidence: z.number().int().min(0).max(100) });
@@ -115,11 +116,11 @@ export const appRouter = router({
       let response;
       try {
         response = await invokeLLM({
-          model: "gemini-3.1-pro-preview",
           messages: [
             { role: "system", content: `أنت مساعد تغذية حذر. أعد JSON فقط باللغة ${languageName}. لا تقدم تشخيصاً أو نصيحة طبية. اقترح تعديلاً صغيراً لا يتجاوز 10% من السعرات الحالية، ولا تنزل أبداً عن 1200 سعرة. اجعل السبب عملياً ومشجعاً.` },
             { role: "user", content: `المستخدم أبطأ من جدوله الزمني. السعرات الحالية: ${input.currentCalories}. التقدم: ${input.progressPercent}%. الأيام المتبقية: ${input.daysRemaining}. الهدف: ${input.goal}. الوزن الحالي: ${input.currentWeightKg} كغ، المستهدف: ${input.targetWeightKg} كغ. المطلوب: ${directionText}. اقترح سعراً يومياً جديداً ضمن تعديل صغير، واذكر سبباً وعادة واحدة مساعدة.` },
           ],
+          model: ENV.llmModel,
           thinking: { budget_tokens: 512 },
           maxTokens: 500,
           responseFormat: { type: "json_schema", json_schema: { name: "calorie_adjustment", strict: true, schema: suggestionSchema } },
@@ -266,11 +267,11 @@ export const appRouter = router({
       let response;
       try {
         response = await invokeLLM({
-          model: "gemini-3.1-pro-preview",
           messages: [
             { role: "system", content: "أنت خبير تغذية تطبق تقديرات غذائية عملية. أعد JSON صالحاً فقط." },
             { role: "user", content },
           ],
+          model: ENV.llmModel,
           thinking: { budget_tokens: 1024 },
           maxTokens: 1800,
           responseFormat: { type: "json_schema", json_schema: { name: "meal_analysis", strict: true, schema: analysisSchema } },
