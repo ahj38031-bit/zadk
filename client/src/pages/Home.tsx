@@ -8,6 +8,8 @@ import { scaleByPlateSize, type PlateSize } from "@shared/plate-size";
 import { filterHistoryMeals, sortHistoryMeals, type HistoryCalorieFilter, type HistorySortOrder } from "@shared/history-filters";
 import type { BarcodeNutrition } from "@shared/barcode-nutrition";
 import { buildNutritionInsights } from "@shared/nutrition-insights";
+import { PlansView } from "@/components/PlansView";
+import type { WeightPlanGoal } from "@shared/weight-plans";
 import { toast } from "sonner";
 import { useTheme } from "@/contexts/ThemeContext";
 import { CartesianGrid, Legend, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
@@ -37,6 +39,7 @@ import {
   Sparkles,
   Star,
   Sun,
+  Target,
   Trash2,
   UserRound,
   Volume2,
@@ -47,7 +50,7 @@ import {
 } from "lucide-react";
 
 type Language = "ar" | "en" | "tr";
-type View = "home" | "history" | "stats" | "profile";
+type View = "home" | "history" | "stats" | "profile" | "plans";
 type MealType = "breakfast" | "lunch" | "dinner" | "snack";
 type CalorieFilter = HistoryCalorieFilter;
 type MealSortOrder = HistorySortOrder;
@@ -69,7 +72,7 @@ type Labels = {
   analyzing: string; analysisDone: string; mealSaved: string; mealDeleted: string; dayCleared: string; operationFailed: string; delete: string; allMeals: string; noHistory: string;
   statsTitle: string; weekly: string; totalMeals: string; avgCalories: string; avgProtein: string; targetSettings: string; autoGoals: string; autoGoalsHint: string; calculateGoals: string; goalsNeedData: string; calculatedGoals: string; bmr: string; activityMultiplier: string; photoNoteTitle: string; photoNoteHint: string; photoNotePlaceholder: string; oilHint: string; sauceHint: string; portionHint: string;
   calorieGoal: string; proteinGoal: string; carbsGoal: string; fatGoal: string; age: string; height: string; weight: string; goal: string; loseWeight: string; maintainWeight: string; gainWeight: string; goalHint: string; targetWeight: string; targetDate: string; progress: string; currentWeight: string; targetReached: string; daysLeft: string; overdue: string; setTargetHint: string; motivationReached: string; motivationAhead: string; motivationOnTrack: string; motivationDeadline: string; motivationOverdue: string; motivationStart: string; calorieSuggestion: string; aiSuggestionHint: string; suggestionReason: string; suggestionFocus: string; suggestionReview: string; applySuggestion: string; suggestionApplied: string; suggestionLoading: string; suggestionError: string; chartTitle: string; chartHint: string; caloriesSeries: string; weightSeries: string; chartRange: string; chartRange7: string; chartRange14: string; chartRange30: string; chartCaloriesAverage: string; chartLatestWeight: string; chartDailyTarget: string; chartVisible: string; noChartData: string;
-  activity: string; save: string; saved: string; saving: string; calculatingGoals: string; breakfast: string; lunch: string; dinner: string; snack: string;
+  activity: string; save: string; saved: string; saving: string; calculatingGoals: string; breakfast: string; lunch: string; dinner: string; snack: string; plans?: string;
   notificationCenter: string; noNotifications: string; markAllRead: string; soundOn: string; soundOff: string; successTone: string; errorTone: string; toneGentle: string; toneChime: string; tonePulse: string; toneOff: string; guestHint: string; filters: string; mealTypeFilter: string; calorieFilter: string; allTypes: string; allCalories: string; under400: string; between400700: string; over700: string; filteredResults: string; noFilteredMeals: string; resetFilters: string; sortOrder: string; newestFirst: string; highestCalories: string; preferenceHint: string; guestPreferenceHint: string; preferencesSaving: string; preferencesSaved: string; preferencesError: string; preferencesLoading: string; signInToSync: string; confidence: string; estimated: string; items: string; removeImage: string; plateSize: string; plateSizeHint: string; plateSmall: string; plateMedium: string; plateLarge: string; portionAdjusted: string; saveFrequent: string; frequentSaved: string; frequentSaveError: string; frequentMeals: string; noFrequentMeals: string; logFrequent: string; loggingFrequent: string; frequentMealLogged: string; frequentMealDeleted: string; chooseMealType: string; removeFrequent: string; barcodeScanner: string; barcodePlaceholder: string; barcodeLookup: string; barcodeLookingUp: string; barcodeNotFound: string; barcodeUnavailable: string; barcodeInvalid: string; barcodeFound: string; saveBarcodeMeal: string; barcodeSaved: string; barcodeNutritionSource: string; fiber: string; sugar: string; sodium: string; perServing: string; per100g: string; grams: string; nutritionAlerts: string; smartAlternatives: string; alertHighSugar: string; alertHighFat: string; alertHighSodium: string; alertHighCalories: string; altReduceOil: string; altSwapFried: string; altSwapRice: string; altReduceSugar: string; altSmallerPortion: string;
 };
 
@@ -101,11 +104,16 @@ const marketingCopy = {
 const navItems = [
   { key: "home" as const, icon: Utensils },
   { key: "analyze" as const, icon: Sparkles },
+  { key: "plans" as const, icon: Target },
   { key: "history" as const, icon: History },
   { key: "stats" as const, icon: BarChart3 },
   { key: "profile" as const, icon: UserRound },
 ];
-const mobileSections: View[] = ["home", "history", "stats", "profile"];
+const mobileSections: View[] = ["home", "history", "plans", "stats", "profile"];
+const planNavLabels: Record<Language, string> = { ar: "الخطط", en: "Plans", tr: "Planlar" };
+function navLabel(key: keyof Labels, language: Language, t: Labels) {
+  return key === "plans" ? planNavLabels[language] : t[key];
+}
 
 type ProfileForm = { calorieGoal: number; proteinGoal: number; carbsGoal: number; fatGoal: number; age: number | null; heightCm: number | null; weightKg: number | null; startWeightKg: number | null; targetWeightKg: number | null; targetDate: string | null; activityLevel: "sedentary" | "light" | "moderate" | "high"; goal: "lose" | "maintain" | "gain" };
 const defaultProfile: ProfileForm = { calorieGoal: 2139, proteinGoal: 98, carbsGoal: 293, fatGoal: 64, age: null, heightCm: null, weightKg: null, startWeightKg: null, targetWeightKg: null, targetDate: null, activityLevel: "moderate", goal: "maintain" };
@@ -193,10 +201,10 @@ function MobileSectionIndicator({ view, t, dark }: { view: View; t: Labels; dark
   </div>;
 }
 
-function MobileBottomNav({ view, onSelect, t, dark }: { view: View; onSelect: (key: string) => void; t: Labels; dark: boolean }) {
+function MobileBottomNav({ view, onSelect, t, dark, language }: { view: View; onSelect: (key: string) => void; t: Labels; dark: boolean; language: Language }) {
   return <nav className={`zadak-bottom-nav lg:hidden ${dark ? "border-white/10 bg-[#182522]/95 text-[#b9d0c0]" : "border-[#e1e9e1] bg-white/95 text-[#7a877e]"}`} aria-label={t.navigation}>
     {navItems.map(({ key, icon: Icon }) => <button key={key} type="button" onClick={() => onSelect(key)} aria-current={view === key ? "page" : undefined} className={`zadak-bottom-nav-item ${view === key ? (dark ? "is-active-dark" : "is-active") : ""}`}>
-      <span className="zadak-bottom-nav-icon"><Icon size={17} strokeWidth={view === key ? 2.4 : 1.9} /></span><span>{t[key]}</span>
+      <span className="zadak-bottom-nav-icon"><Icon size={17} strokeWidth={view === key ? 2.4 : 1.9} /></span><span>{navLabel(key, language, t)}</span>
     </button>)}
   </nav>;
 }
@@ -297,6 +305,11 @@ export default function Home() {
     setSlideDirection(direction);
     if (key === "analyze") { setMealModal(true); return; }
     setView(key as View);
+  }
+
+  function applyPlanGoal(goal: WeightPlanGoal) {
+    setProfileForm((current) => ({ ...current, goal }));
+    saveProfileMutation.mutate({ ...profileForm, goal });
   }
 
   function handleTouchStart(event: React.TouchEvent<HTMLDivElement>) {
@@ -412,8 +425,8 @@ export default function Home() {
 
   return <div className={`zadak-app-shell min-h-screen overflow-x-hidden transition-colors duration-300 ${dark ? "bg-[#182522] text-[#e7f0eb]" : "bg-[#f8f8f4] text-[#1c2924]"}`} dir={isArabic ? "rtl" : "ltr"} onTouchStart={handleTouchStart} onTouchEnd={handleTouchEnd} onTouchCancel={() => { swipeStartRef.current = null; }}>
     <header className={`zadak-header sticky top-0 z-40 border-b backdrop-blur-xl ${dark ? "border-white/10 bg-[#182522]/90" : "border-[#e4e9e2] bg-[#fbfbf8]/90"}`}>
-      <div className="mx-auto flex h-[68px] max-w-[1180px] items-center justify-between px-5 lg:px-8"><Logo /><nav aria-label={t.navigation} className="hidden items-center gap-1 lg:flex">{navItems.map(({ key, icon: Icon }) => <button key={key} aria-current={view === key ? "page" : undefined} onClick={() => selectNav(key)} className={`zadak-nav-item group flex items-center gap-2 rounded-full px-4 py-2 text-[12px] font-semibold transition-all duration-200 ${view === key ? (dark ? "bg-white/10 text-[#8ddab8]" : "bg-[#e8f1eb] text-[#087b69]") : (dark ? "text-[#c9d7d0] hover:bg-white/5" : "text-[#6b716b] hover:bg-[#f1f4ef] hover:text-[#087b69]")}`}><Icon size={15} />{t[key]}</button>)}</nav><div className="flex items-center gap-2"><NotificationCenter notifications={notifications} open={notificationsOpen} onToggle={() => setNotificationsOpen((value) => !value)} onMarkAllRead={() => setNotifications((current) => current.map((item) => ({ ...item, read: true })))} soundEnabled={soundEnabled} onToggleSound={() => setSoundEnabled((value) => !value)} successTone={successTone} errorTone={errorTone} onToneChange={(kind, tone) => kind === "success" ? setSuccessTone(tone) : setErrorTone(tone)} t={t} dark={dark} /><button onClick={() => toggleTheme?.()} className={`grid h-9 w-9 place-items-center rounded-full ${dark ? "bg-white/10 text-[#f5c873]" : "bg-[#eef2ed] text-[#718078]"}`} aria-label={dark ? t.light : t.dark}>{dark ? <Sun size={16} /> : <Moon size={16} />}</button><button onClick={() => setPrivacyOpen(true)} className={`hidden h-9 w-9 place-items-center rounded-full sm:grid ${dark ? "bg-white/10 text-[#9edabc]" : "bg-[#f2f4ed] text-[#728279]"}`} aria-label={t.privacy}><ShieldCheck size={16} /></button><div className="relative hidden sm:block"><Globe2 className={`pointer-events-none absolute top-1/2 -translate-y-1/2 ${isArabic ? "right-3" : "left-3"}`} size={14} /><select value={language} onChange={(e) => setLanguage(e.target.value as Language)} className={`h-9 appearance-none rounded-full border bg-transparent px-8 text-[11px] font-semibold outline-none ${isArabic ? "pl-7" : "pr-7"} ${dark ? "border-white/10 text-[#c9d7d0]" : "border-[#dfe7df] text-[#65726a]"}`} aria-label={t.language}><option value="ar">العربية</option><option value="en">EN</option><option value="tr">TR</option></select><ChevronDown className={`pointer-events-none absolute top-1/2 -translate-y-1/2 ${isArabic ? "left-2" : "right-2"}`} size={12} /></div>{isAuthenticated ? <button onClick={() => void logout()} className="hidden items-center gap-2 rounded-full bg-[#087b69] px-4 py-2.5 text-[11px] font-bold text-white sm:flex"><LogIn size={14} />{user?.name || t.logout}</button> : <button onClick={startLogin} className="hidden items-center gap-2 rounded-full bg-[#087b69] px-4 py-2.5 text-[11px] font-bold text-white shadow-[0_7px_18px_rgba(8,123,105,.18)] sm:flex"><LogIn size={14} />{t.login}</button>}<button onClick={() => setMobileMenu(!mobileMenu)} aria-expanded={mobileMenu} className={`grid h-9 w-9 place-items-center rounded-full lg:hidden ${dark ? "bg-white/10" : "bg-[#eef2ed]"}`} aria-label={mobileMenu ? t.close : t.navigation}>{mobileMenu ? <X size={17} /> : <Activity size={17} />}</button></div></div>
-      {mobileMenu && <div className={`zadak-mobile-menu border-t px-5 py-3 lg:hidden ${dark ? "border-white/10 bg-[#182522]" : "border-[#e4e9e2] bg-[#fbfbf8]"}`}><div className="flex flex-wrap gap-2">{navItems.map(({ key, icon: Icon }) => <button key={key} onClick={() => selectNav(key)} className="flex items-center gap-2 rounded-full bg-[#e8f1eb] px-3 py-2 text-xs font-semibold text-[#087b69]"><Icon size={14} />{t[key]}</button>)}{!isAuthenticated && <button onClick={startLogin} className="flex items-center gap-2 rounded-full bg-[#087b69] px-3 py-2 text-xs font-semibold text-white"><LogIn size={14} />{t.login}</button>}</div></div>}
+      <div className="mx-auto flex h-[68px] max-w-[1180px] items-center justify-between px-5 lg:px-8"><Logo /><nav aria-label={t.navigation} className="hidden items-center gap-1 lg:flex">{navItems.map(({ key, icon: Icon }) => <button key={key} aria-current={view === key ? "page" : undefined} onClick={() => selectNav(key)} className={`zadak-nav-item group flex items-center gap-2 rounded-full px-4 py-2 text-[12px] font-semibold transition-all duration-200 ${view === key ? (dark ? "bg-white/10 text-[#8ddab8]" : "bg-[#e8f1eb] text-[#087b69]") : (dark ? "text-[#c9d7d0] hover:bg-white/5" : "text-[#6b716b] hover:bg-[#f1f4ef] hover:text-[#087b69]")}`}><Icon size={15} />{navLabel(key, language, t)}</button>)}</nav><div className="flex items-center gap-2"><NotificationCenter notifications={notifications} open={notificationsOpen} onToggle={() => setNotificationsOpen((value) => !value)} onMarkAllRead={() => setNotifications((current) => current.map((item) => ({ ...item, read: true })))} soundEnabled={soundEnabled} onToggleSound={() => setSoundEnabled((value) => !value)} successTone={successTone} errorTone={errorTone} onToneChange={(kind, tone) => kind === "success" ? setSuccessTone(tone) : setErrorTone(tone)} t={t} dark={dark} /><button onClick={() => toggleTheme?.()} className={`grid h-9 w-9 place-items-center rounded-full ${dark ? "bg-white/10 text-[#f5c873]" : "bg-[#eef2ed] text-[#718078]"}`} aria-label={dark ? t.light : t.dark}>{dark ? <Sun size={16} /> : <Moon size={16} />}</button><button onClick={() => setPrivacyOpen(true)} className={`hidden h-9 w-9 place-items-center rounded-full sm:grid ${dark ? "bg-white/10 text-[#9edabc]" : "bg-[#f2f4ed] text-[#728279]"}`} aria-label={t.privacy}><ShieldCheck size={16} /></button><div className="relative hidden sm:block"><Globe2 className={`pointer-events-none absolute top-1/2 -translate-y-1/2 ${isArabic ? "right-3" : "left-3"}`} size={14} /><select value={language} onChange={(e) => setLanguage(e.target.value as Language)} className={`h-9 appearance-none rounded-full border bg-transparent px-8 text-[11px] font-semibold outline-none ${isArabic ? "pl-7" : "pr-7"} ${dark ? "border-white/10 text-[#c9d7d0]" : "border-[#dfe7df] text-[#65726a]"}`} aria-label={t.language}><option value="ar">العربية</option><option value="en">EN</option><option value="tr">TR</option></select><ChevronDown className={`pointer-events-none absolute top-1/2 -translate-y-1/2 ${isArabic ? "left-2" : "right-2"}`} size={12} /></div>{isAuthenticated ? <button onClick={() => void logout()} className="hidden items-center gap-2 rounded-full bg-[#087b69] px-4 py-2.5 text-[11px] font-bold text-white sm:flex"><LogIn size={14} />{user?.name || t.logout}</button> : <button onClick={startLogin} className="hidden items-center gap-2 rounded-full bg-[#087b69] px-4 py-2.5 text-[11px] font-bold text-white shadow-[0_7px_18px_rgba(8,123,105,.18)] sm:flex"><LogIn size={14} />{t.login}</button>}<button onClick={() => setMobileMenu(!mobileMenu)} aria-expanded={mobileMenu} className={`grid h-9 w-9 place-items-center rounded-full lg:hidden ${dark ? "bg-white/10" : "bg-[#eef2ed]"}`} aria-label={mobileMenu ? t.close : t.navigation}>{mobileMenu ? <X size={17} /> : <Activity size={17} />}</button></div></div>
+      {mobileMenu && <div className={`zadak-mobile-menu border-t px-5 py-3 lg:hidden ${dark ? "border-white/10 bg-[#182522]" : "border-[#e4e9e2] bg-[#fbfbf8]"}`}><div className="flex flex-wrap gap-2">{navItems.map(({ key, icon: Icon }) => <button key={key} onClick={() => selectNav(key)} className="flex items-center gap-2 rounded-full bg-[#e8f1eb] px-3 py-2 text-xs font-semibold text-[#087b69]"><Icon size={14} />{navLabel(key, language, t)}</button>)}{!isAuthenticated && <button onClick={startLogin} className="flex items-center gap-2 rounded-full bg-[#087b69] px-3 py-2 text-xs font-semibold text-white"><LogIn size={14} />{t.login}</button>}</div></div>}
     </header>
 
     <div key={view} className={`zadak-view-stage ${slideDirection ? `is-${slideDirection}` : ""}`}>
@@ -472,12 +485,13 @@ export default function Home() {
     </main>}
 
     {view === "history" && <HistoryView meals={meals} t={t} language={language} dark={dark} onDelete={(id) => deleteMutation.mutate({ id })} onSaveFrequent={saveHistoryMealAsFrequent} onAnalyze={openAnalyze} isAuthenticated={isAuthenticated} preferences={historyPreferences} preferencesReady={Boolean(dashboardQuery.data?.profile)} onNotify={notify} />}
+    {view === "plans" && <PlansView profile={profile} weightLogs={weightLogs} language={language} dark={dark} isAuthenticated={isAuthenticated} onLogin={startLogin} onApplyGoal={applyPlanGoal} onOpenProfile={() => selectNav("profile")} />}
     {view === "stats" && <StatsView meals={meals} weightLogs={weightLogs} profile={profile} t={t} language={language} dark={dark} weeklyAverage={weeklyAverage} />}
     {view === "profile" && <ProfileView form={profileForm} setForm={setProfileForm} t={t} dark={dark} onSave={saveProfile} saving={saveProfileMutation.isPending} saved={saveProfileMutation.isSuccess} isAuthenticated={isAuthenticated} onLogin={startLogin} user={user} onLogout={() => void logout()} calculation={goalCalculation.data} canCalculate={canCalculateGoals} calculating={goalCalculation.isFetching} />}
 
     </div>
     <MobileSectionIndicator view={view} t={t} dark={dark} />
-    <MobileBottomNav view={view} onSelect={selectNav} t={t} dark={dark} />
+    <MobileBottomNav view={view} onSelect={selectNav} t={t} dark={dark} language={language} />
     <footer className="mx-auto flex max-w-[1180px] justify-end px-5 pb-5 lg:px-8"><span className={`rounded-full px-3 py-1.5 text-[9px] font-semibold shadow-sm ${dark ? "bg-[#20312b] text-[#9db5a8]" : "bg-white text-[#9da59d]"}`}>Made with Manus ◈</span></footer>
 
     {privacyOpen && <div className="zadak-modal-backdrop fixed inset-0 z-50 grid place-items-center bg-[#10271f]/35 p-5 backdrop-blur-sm" onClick={() => setPrivacyOpen(false)}><div className={`zadak-modal-panel relative w-full max-w-md rounded-[25px] p-6 shadow-2xl ${dark ? "bg-[#20312b] text-[#e8f5ec]" : "bg-white text-[#23342b]"}`} onClick={(e) => e.stopPropagation()}><button onClick={() => setPrivacyOpen(false)} className="absolute left-4 top-4 grid h-8 w-8 place-items-center rounded-full bg-black/5"><X size={15} /></button><div className="mb-5 grid h-12 w-12 place-items-center rounded-full bg-[#eaf6eb] text-[#16866f]"><ShieldCheck size={22} /></div><h3 className="text-xl font-black">{t.privacyTitle}</h3><p className={`mt-3 text-sm leading-7 ${dark ? "text-[#b3c7ba]" : "text-[#738078]"}`}>{t.privacyText}</p><div className={`mt-5 space-y-3 rounded-2xl p-4 text-xs leading-6 ${dark ? "bg-[#182a23] text-[#c0d4c6]" : "bg-[#f6faf4] text-[#65746a]"}`}><div className="flex gap-2"><Check size={15} className="mt-1 shrink-0 text-[#169374]" /> لا تُرسل الصور إلا عند طلب التحليل.</div><div className="flex gap-2"><Check size={15} className="mt-1 shrink-0 text-[#169374]" /> يمكنك حذف سجل اليوم في أي وقت.</div><div className="flex gap-2"><Check size={15} className="mt-1 shrink-0 text-[#169374]" /> بياناتك محفوظة بحسابك ويمكنك حذفها من السجل.</div></div><button onClick={() => setPrivacyOpen(false)} className="mt-5 w-full rounded-full bg-[#087b69] py-3 text-sm font-bold text-white">{t.close}</button></div></div>}
